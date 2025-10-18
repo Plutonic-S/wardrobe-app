@@ -2,11 +2,9 @@ import jwt from "jsonwebtoken";
 import { logger } from "../../../lib/logger";
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || ("7d" as string);
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 if (!JWT_SECRET) throw new Error("Please add JWT_SECRET to your environment");
-if (!JWT_EXPIRES_IN)
-  throw new Error("Please add JWT_EXPIRES_IN to your environment");
 
 export interface JwtPayload {
   userId: string;
@@ -18,8 +16,8 @@ export interface JwtPayload {
 export function signJwt(payload: JwtPayload): string {
   try {
     const token = jwt.sign(payload, JWT_SECRET as string, {
-      expiresIn: "7d",
-    });
+      expiresIn: JWT_EXPIRES_IN as string,
+    } as jwt.SignOptions);
     logger.auth("JWT signed", {
       userId: payload.userId,
       username: payload.username,

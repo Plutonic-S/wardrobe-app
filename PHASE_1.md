@@ -143,11 +143,13 @@ wardrobe-app/
 - [x] Create `src/lib/logger.ts` - Pino logger configuration ✅ IMPROVED
 
 #### Auth Utilities
-- [ ] Create `src/features/auth/utils/jwt.ts` - Sign & verify tokens 🔥 NEXT
-- [ ] Create `src/lib/validations/auth.schema.ts` - Zod schemas for signup/login 🔥 NEXT
-- [ ] ~~Create `src/features/auth/utils/password.ts`~~ - SKIP (User model handles this)
+- [x] Create `src/features/auth/utils/jwt.ts` - Sign & verify tokens ✅
+- [x] Create `src/features/auth/validations/auth.schema.ts` - Zod schemas for signup/login ✅
+- [x] ~~Create `src/features/auth/utils/password.ts`~~ - SKIP (User model handles this)
 
 #### Middleware
+- [x] Create `src/lib/middleware/auth-middleware.ts` - JWT verification ✅
+- [x] Create `src/lib/middleware/error-handler.ts` - Centralized error handling ✅
 - [ ] Create `src/lib/middleware/auth-middleware.ts` - Verify JWT from cookies/headers
 - [ ] Create `src/lib/middleware/error-handler.ts` - Catch & format errors (optional)
 
