@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const POST = asyncHandler(
   async (req: NextRequest): Promise<NextResponse> => {
     // 1. Create request logger
-    const logResponse = logger.createRequestLogger("POST", "/api/auth/signup");
+    const logResponse = logger.createRequestLogger("POST", "/api/auth/login");
 
     // 2. Connect to database
     await dbConnect();
@@ -16,13 +16,13 @@ export const POST = asyncHandler(
     // 3. Parse request body
     const body = await req.json();
 
-    // 4. Call auth service to handle signup logic
-    const { user, token } = await AuthService.signup(body);
+    // 4. Call auth service to handle login logic
+    const { user, token } = await AuthService.login(body);
 
     // 5. Create response
-    const response = ApiResponseHandler.created(
+    const response = ApiResponseHandler.success(
       { user },
-      "Account created successfully"
+      "Login successful"
     );
 
     // 6. Set authentication cookie
@@ -30,11 +30,11 @@ export const POST = asyncHandler(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
     });
 
-    logResponse(201, { userId: user.id });
+    logResponse(200, { email: user.email });
     return response;
   }
 );

@@ -1,17 +1,11 @@
 import jwt from "jsonwebtoken";
 import { logger } from "../../../lib/logger";
+import type { JwtPayload } from "../types/auth.types";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 if (!JWT_SECRET) throw new Error("Please add JWT_SECRET to your environment");
-
-export interface JwtPayload {
-  userId: string;
-  email: string;
-  username: string;
-  role: "user" | "moderator" | "admin" | "superadmin";
-}
 
 export function signJwt(payload: JwtPayload): string {
   try {
