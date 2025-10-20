@@ -33,7 +33,6 @@ export function SignupForm() {
       email: "",
       username: "",
       password: "",
-      displayName: "",
     },
   });
 
@@ -102,14 +101,6 @@ export function SignupForm() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <InputField
-              control={form.control}
-              name="displayName"
-              label="Display Name"
-              placeholder="John Doe"
-              autoComplete="name"
-            />
-
             <div className="space-y-2">
               <InputField
                 control={form.control}

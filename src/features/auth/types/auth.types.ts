@@ -25,7 +25,6 @@ export interface User {
   id: string;
   email: string;
   username: string;
-  displayName: string;
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
@@ -38,7 +37,6 @@ export interface UserResponse {
   id: string;
   email: string;
   username: string;
-  displayName: string;
   role: UserRole;
 }
 
@@ -72,7 +70,6 @@ export interface SignupData {
   email: string;
   username: string;
   password: string;
-  displayName: string;
 }
 
 /**
@@ -80,7 +77,6 @@ export interface SignupData {
  */
 export interface UpdateProfileData {
   username?: string;
-  displayName?: string;
   email?: string;
 }
 

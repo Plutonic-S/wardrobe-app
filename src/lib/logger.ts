@@ -2,22 +2,17 @@ import pino from 'pino';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-const pinoLogger = pino({
-  transport: isDevelopment
-    ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:mm:ss',
-          ignore: 'pid,hostname',
-          singleLine: false,
-          levelFirst: true,
-        },
-      }
-    : undefined,
-  level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
-  base: undefined, // Removes pid and hostname from all logs
-});
+// Simple console-based logger for development to avoid thread-stream issues
+const pinoLogger = isDevelopment
+  ? pino({
+      level: 'debug',
+      browser: {
+        asObject: true,
+      },
+    })
+  : pino({
+      level: process.env.LOG_LEVEL || 'info',
+    });
 
 interface LogContext { [key: string]: unknown }
 

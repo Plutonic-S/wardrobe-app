@@ -37,7 +37,6 @@ export class AuthService {
         id: user._id.toString(),
         email: user.email,
         username: user.username,
-        displayName: user.displayName,
         role: user.role,
       },
       token,
@@ -77,7 +76,6 @@ export class AuthService {
         id: user._id.toString(),
         email: user.email,
         username: user.username,
-        displayName: user.displayName,
         role: user.role,
       },
       token,
@@ -97,7 +95,6 @@ export class AuthService {
       id: user._id.toString(),
       email: user.email,
       username: user.username,
-      displayName: user.displayName,
       role: user.role,
     };
   }
@@ -118,7 +115,6 @@ export class AuthService {
       id: user._id.toString(),
       email: user.email,
       username: user.username,
-      displayName: user.displayName,
       role: user.role,
     };
   }

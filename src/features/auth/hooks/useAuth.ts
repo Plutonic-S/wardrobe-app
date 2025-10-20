@@ -43,7 +43,7 @@ interface AuthState {
  */
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Initial state
       user: null,
       token: null,
@@ -78,11 +78,11 @@ export const useAuthStore = create<AuthState>()(
             throw new Error(data.message || "Login failed");
           }
 
-          const { user, token } = data.data;
+          const { user } = data.data;
 
           set({
             user,
-            token,
+            token: "cookie", // Real token is in httpOnly cookie
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -110,7 +110,7 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Register new user
        * 
-       * @param data - Signup data (username, email, password, displayName)
+       * @param data - Signup data (username, email, password)
        * @throws Error if signup fails
        */
       signup: async (data: SignupData) => {
@@ -134,11 +134,11 @@ export const useAuthStore = create<AuthState>()(
             throw new Error(responseData.message || "Signup failed");
           }
 
-          const { user, token } = responseData.data;
+          const { user } = responseData.data;
 
           set({
             user,
-            token,
+            token: "cookie", // Real token is in httpOnly cookie
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -187,7 +187,7 @@ export const useAuthStore = create<AuthState>()(
 
           // Clear token cookie on client side
           document.cookie =
-            "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+            "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
 
           clientLogger.info("Auth: Logout successful");
         } catch (error) {
@@ -207,53 +207,42 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Check authentication status and verify token
        * Should be called on app initialization
+       * Note: Relies on httpOnly cookie set by the server
        */
       checkAuth: async () => {
-        const { token } = get();
-
-        // No token, not authenticated
-        if (!token) {
-          set({
-            isLoading: false,
-            isAuthenticated: false,
-            user: null,
-          });
-          return;
-        }
-
         set({ isLoading: true });
 
         try {
-          clientLogger.debug("Auth: Verifying token");
+          clientLogger.debug("Auth: Verifying authentication");
 
+          // Call /api/auth/me which will check the httpOnly cookie
           const response = await fetch("/api/auth/me", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: "include",
+            credentials: "include", // Important: sends httpOnly cookies
           });
 
           if (!response.ok) {
             throw new Error("Token verification failed");
           }
 
-          const data: ApiResponse<UserResponse> = await response.json();
+          const data: ApiResponse<{ user: UserResponse }> = await response.json();
 
-          if (data.success && data.data) {
+          if (data.success && data.data?.user) {
+            // Token is valid, update state with user data
             set({
-              user: data.data,
+              user: data.data.user,
+              token: "cookie", // Placeholder since real token is in httpOnly cookie
               isAuthenticated: true,
               isLoading: false,
               error: null,
             });
-            clientLogger.debug("Auth: Token verified", { userId: data.data.id });
+            clientLogger.debug("Auth: Authentication verified", { userId: data.data.user.id });
           } else {
             throw new Error("Invalid token response");
           }
         } catch (error) {
-          clientLogger.error("Auth: Token verification failed", error);
+          clientLogger.debug("Auth: Not authenticated", error);
 
-          // Clear invalid token
+          // Clear state if verification fails
           set({
             user: null,
             token: null,
@@ -261,10 +250,6 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           });
-
-          // Clear token cookie
-          document.cookie =
-            "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
         }
       },
 
@@ -322,7 +307,7 @@ export const useAuthStore = create<AuthState>()(
  * // Signup
  * const handleSignup = async () => {
  *   try {
- *     await signup({ username, email, password, displayName });
+ *     await signup({ username, email, password });
  *     router.push('/dashboard');
  *   } catch (error) {
  *     console.error('Signup failed:', error);
@@ -341,7 +326,7 @@ export const useAuthStore = create<AuthState>()(
  * }, [checkAuth]);
  * 
  * // Display user info
- * {isAuthenticated && <p>Welcome, {user?.displayName}!</p>}
+ * {isAuthenticated && <p>Welcome, {user?.username}!</p>}
  * 
  * // Show loading state
  * {isLoading && <Spinner />}
