@@ -3,7 +3,7 @@
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Shirt, Plus, Filter } from 'lucide-react';
+import { Shirt, Plus } from 'lucide-react';
 
 export default function WardrobePage() {
   const { user, isChecking } = useAuthGuard({

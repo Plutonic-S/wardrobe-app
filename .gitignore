@@ -43,5 +43,10 @@ next-env.d.ts
 # Ignore scripts folder
 /src/scripts
 
-
+# Documentation files (exclude from git)
 *.md
+!README.md
+
+# Ignore .agent folder for AI conversation history
+.agent/
+
