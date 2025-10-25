@@ -51,16 +51,22 @@ export interface IClothModel extends Model<IClothDocument> {
   getWardrobeStats(userId: Types.ObjectId | string): Promise<WardrobeStats>;
   getByCategory(
     userId: Types.ObjectId | string,
-    category: ClothCategory
+    category: ClothCategory,
+    options?: { skip?: number; limit?: number }
   ): Promise<IClothDocument[]>;
-  getFavorites(userId: Types.ObjectId | string): Promise<IClothDocument[]>;
+  getFavorites(
+    userId: Types.ObjectId | string,
+    options?: { skip?: number; limit?: number }
+  ): Promise<IClothDocument[]>;
   searchItems(
     userId: Types.ObjectId | string,
-    searchTerm: string
+    searchTerm: string,
+    options?: { skip?: number; limit?: number }
   ): Promise<IClothDocument[]>;
   getBySeason(
     userId: Types.ObjectId | string,
-    season: Season
+    season: Season,
+    options?: { skip?: number; limit?: number }
   ): Promise<IClothDocument[]>;
   getFilteredItems(
     userId: Types.ObjectId | string,
@@ -69,8 +75,15 @@ export interface IClothModel extends Model<IClothDocument> {
       season?: Season;
       favorite?: boolean;
       tags?: string[];
+      status?: ClothStatus;
+    },
+    options?: {
+      skip?: number;
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
     }
-  ): Promise<IClothDocument[]>;
+  ): Promise<{ items: IClothDocument[]; total: number }>;
 }
 
 // ============================================================================
@@ -327,15 +340,25 @@ clothSchema.statics.getWardrobeStats = async function (
  */
 clothSchema.statics.getByCategory = async function (
   userId: Types.ObjectId | string,
-  category: ClothCategory
+  category: ClothCategory,
+  options: { skip?: number; limit?: number } = {}
 ): Promise<IClothDocument[]> {
+  const { skip = 0, limit = 20 } = options;
+
   return this.find({
     userId,
     "metadata.category": category,
     status: "active",
   })
-    .populate("imageId")
+    .populate({
+      path: "imageId",
+      select: "originalUrl optimizedUrl thumbnailUrl dominantColor processingStatus",
+    })
+    .select("-__v")
     .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean()
     .exec();
 };
 
@@ -343,32 +366,52 @@ clothSchema.statics.getByCategory = async function (
  * Get favorite items with populated image data
  */
 clothSchema.statics.getFavorites = async function (
-  userId: Types.ObjectId | string
+  userId: Types.ObjectId | string,
+  options: { skip?: number; limit?: number } = {}
 ): Promise<IClothDocument[]> {
+  const { skip = 0, limit = 20 } = options;
+
   return this.find({
     userId,
     "usage.favorite": true,
     status: "active",
   })
-    .populate("imageId")
+    .populate({
+      path: "imageId",
+      select: "originalUrl optimizedUrl thumbnailUrl dominantColor processingStatus",
+    })
+    .select("-__v")
     .sort({ updatedAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean()
     .exec();
 };
 
 /**
- * Search items by text with populated image data
+ * Search items by text with populated image data (uses text index)
  */
 clothSchema.statics.searchItems = async function (
   userId: Types.ObjectId | string,
-  searchTerm: string
+  searchTerm: string,
+  options: { skip?: number; limit?: number } = {}
 ): Promise<IClothDocument[]> {
+  const { skip = 0, limit = 20 } = options;
+
   return this.find({
     userId,
     status: "active",
     $text: { $search: searchTerm },
   })
-    .populate("imageId")
+    .populate({
+      path: "imageId",
+      select: "originalUrl optimizedUrl thumbnailUrl dominantColor processingStatus",
+    })
+    .select("-__v score")
     .sort({ score: { $meta: "textScore" } })
+    .skip(skip)
+    .limit(limit)
+    .lean()
     .exec();
 };
 
@@ -377,15 +420,25 @@ clothSchema.statics.searchItems = async function (
  */
 clothSchema.statics.getBySeason = async function (
   userId: Types.ObjectId | string,
-  season: Season
+  season: Season,
+  options: { skip?: number; limit?: number } = {}
 ): Promise<IClothDocument[]> {
+  const { skip = 0, limit = 20 } = options;
+
   return this.find({
     userId,
     "metadata.season": season,
     status: "active",
   })
-    .populate("imageId")
+    .populate({
+      path: "imageId",
+      select: "originalUrl optimizedUrl thumbnailUrl dominantColor processingStatus",
+    })
+    .select("-__v")
     .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean()
     .exec();
 };
 
@@ -399,12 +452,21 @@ clothSchema.statics.getFilteredItems = async function (
     season?: Season;
     favorite?: boolean;
     tags?: string[];
-  }
-): Promise<IClothDocument[]> {
+    status?: ClothStatus;
+  },
+  options: {
+    skip?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  } = {}
+): Promise<{ items: IClothDocument[]; total: number }> {
+  const { skip = 0, limit = 20, sortBy = "createdAt", sortOrder = "desc" } = options;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {
     userId,
-    status: "active",
+    status: filters.status || "active",
   };
 
   if (filters.category) {
@@ -423,7 +485,32 @@ clothSchema.statics.getFilteredItems = async function (
     query["organization.tags"] = { $in: filters.tags };
   }
 
-  return this.find(query).populate("imageId").sort({ createdAt: -1 }).exec();
+  // Build sort object
+  const sort: Record<string, 1 | -1> = {};
+  const sortField = sortBy === "name" ? "metadata.name" :
+                    sortBy === "wearCount" ? "usage.wearCount" :
+                    sortBy === "lastWornDate" ? "usage.lastWornDate" :
+                    sortBy === "price" ? "organization.price" :
+                    sortBy; // createdAt or updatedAt
+  sort[sortField] = sortOrder === "asc" ? 1 : -1;
+
+  // Execute query with count
+  const [items, total] = await Promise.all([
+    this.find(query)
+      .populate({
+        path: "imageId",
+        select: "originalUrl optimizedUrl thumbnailUrl dominantColor processingStatus",
+      })
+      .select("-__v")
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec(),
+    this.countDocuments(query),
+  ]);
+
+  return { items, total };
 };
 
 // ============================================================================
