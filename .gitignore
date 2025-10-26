@@ -50,3 +50,6 @@ next-env.d.ts
 # Ignore .agent folder for AI conversation history
 .agent/
 
+public/uploads
+src/features/wardrobe/components/README.md
+src/app/(main)/wardrobe/page.tsx.backup

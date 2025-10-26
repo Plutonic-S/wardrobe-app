@@ -1,11 +1,67 @@
 import { ApiResponseHandler } from "@/lib/api-response";
 import Cloth from "@/lib/db/models/Cloth";
+import Image from "@/lib/db/models/Image";
 import dbConnect from "@/lib/db/mongoose";
 import { authenticate } from "@/lib/middleware/auth-middleware";
 import { asyncHandler } from "@/lib/middleware/error-handler";
 import { NextRequest, NextResponse } from "next/server";
 import { wardrobeQuerySchema } from "@/features/wardrobe/validations/wardrobe.schema";
 import { ZodError } from "zod";
+import { Types } from "mongoose";
+import { IMAGE_PROJECTION } from "@/features/wardrobe/types/cloth-api.types";
+import { ClothResponse } from "@/features/wardrobe/types/wardrobe.types";
+
+/**
+ * Transform Mongoose Cloth document to flattened ClothResponse
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformClothToResponse(cloth: any): ClothResponse {
+  const image = cloth.imageId || {};
+  
+  return {
+    id: cloth._id.toString(),
+    userId: cloth.userId.toString(),
+    
+    // Image data
+    originalUrl: image.originalUrl || "",
+    optimizedUrl: image.optimizedUrl || "",
+    thumbnailUrl: image.thumbnailUrl || "",
+    dominantColor: image.dominantColor || "#CCCCCC",
+    colors: image.colors || [],
+    imageWidth: image.width || 0,
+    imageHeight: image.height || 0,
+    imageSize: image.size || 0,
+    
+    // Metadata (flattened)
+    name: cloth.metadata?.name || "",
+    category: cloth.metadata?.category || "tops",
+    subcategory: cloth.metadata?.subcategory || "",
+    season: cloth.metadata?.season || [],
+    styleType: cloth.metadata?.styleType || "",
+    
+    // Organization (flattened)
+    tags: cloth.organization?.tags || [],
+    brand: cloth.organization?.brand,
+    purchaseDate: cloth.organization?.purchaseDate,
+    price: cloth.organization?.price,
+    
+    // Usage (flattened)
+    lastWornDate: cloth.usage?.lastWornDate,
+    wearCount: cloth.usage?.wearCount || 0,
+    favorite: cloth.usage?.favorite || false,
+    
+    // Processing
+    processingStatus: image.processingStatus || "pending",
+    processingError: image.processingError,
+    
+    // Status
+    status: cloth.status || "active",
+    
+    // Timestamps
+    createdAt: cloth.createdAt,
+    updatedAt: cloth.updatedAt,
+  };
+}
 
 /**
  * GET /api/wardrobe
@@ -40,18 +96,13 @@ export const GET = asyncHandler(
     
     let validatedParams;
     try {
-      validatedParams = wardrobeQuerySchema.parse({
-        category: searchParams.get("category"),
-        season: searchParams.get("season"),
-        favorite: searchParams.get("favorite"),
-        tags: searchParams.get("tags"),
-        search: searchParams.get("search"),
-        status: searchParams.get("status"),
-        page: searchParams.get("page"),
-        limit: searchParams.get("limit"),
-        sortBy: searchParams.get("sortBy"),
-        sortOrder: searchParams.get("sortOrder"),
+      // Only include params that are actually present (not null)
+      const params: Record<string, string> = {};
+      searchParams.forEach((value, key) => {
+        if (value) params[key] = value;
       });
+      
+      validatedParams = wardrobeQuerySchema.parse(params);
     } catch (err) {
       if (err instanceof ZodError) {
         return ApiResponseHandler.badRequest(
@@ -101,7 +152,7 @@ export const GET = asyncHandler(
       // 6. Build response
       return ApiResponseHandler.success(
         {
-          items,
+          items: items.map(transformClothToResponse),
           pagination: {
             total,
             page: validatedParams.page,
@@ -130,6 +181,137 @@ export const GET = asyncHandler(
         dbError instanceof Error ? dbError.message : "Database query failed",
         500
       );
+    }
+  }
+);
+
+/**
+ * POST /api/wardrobe
+ * 
+ * Create a new clothing item with uploaded image
+ * 
+ * Request Body:
+ * - imageId: string (required) - ID of the uploaded Image document
+ * - name: string (required) - Name of the clothing item
+ * - category: ClothCategory (required) - Category (tops, bottoms, etc.)
+ * - tags: string[] (optional) - Array of tags for organization
+ * 
+ * Response:
+ * - 201: Created clothing item with populated image data
+ * - 400: Invalid request (missing fields, invalid imageId, image already used)
+ * - 401: Not authenticated
+ * - 500: Server error
+ */
+export const POST = asyncHandler(
+  async (req: NextRequest): Promise<NextResponse> => {
+    // 1. Authenticate user
+    const { user, error } = await authenticate(req);
+    if (error || !user) {
+      return error; // Return 401 if not authenticated
+    }
+
+    // 2. Connect to database
+    await dbConnect();
+
+    // 3. Parse and validate request body
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return ApiResponseHandler.badRequest("Invalid JSON in request body");
+    }
+
+    const { imageId, name, category, tags = [] } = body;
+
+    // 4. Validate required fields
+    if (!imageId) {
+      return ApiResponseHandler.badRequest("imageId is required");
+    }
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return ApiResponseHandler.badRequest("name is required and must be a non-empty string");
+    }
+    if (!category || typeof category !== "string") {
+      return ApiResponseHandler.badRequest("category is required");
+    }
+
+    // Validate category value
+    const validCategories = ["tops", "bottoms", "dresses", "outerwear", "footwear", "accessories"];
+    if (!validCategories.includes(category)) {
+      return ApiResponseHandler.badRequest(
+        `category must be one of: ${validCategories.join(", ")}`
+      );
+    }
+
+    // Validate imageId is a valid ObjectId
+    if (!Types.ObjectId.isValid(imageId)) {
+      return ApiResponseHandler.badRequest("Invalid imageId format");
+    }
+
+    // Validate tags is an array
+    if (!Array.isArray(tags)) {
+      return ApiResponseHandler.badRequest("tags must be an array");
+    }
+
+    // 5. Verify image exists and belongs to user
+    const image = await Image.findOne({
+      _id: imageId,
+      userId: user.userId,
+    });
+
+    if (!image) {
+      return ApiResponseHandler.badRequest(
+        "Image not found or does not belong to you"
+      );
+    }
+
+    // 6. Check if image is already used by a clothing item
+    const existingCloth = await Cloth.findOne({ imageId });
+    if (existingCloth) {
+      return ApiResponseHandler.badRequest(
+        "This image is already associated with a clothing item"
+      );
+    }
+
+    // 7. Create clothing item document
+    try {
+      const cloth = await Cloth.create({
+        userId: user.userId,
+        imageId: imageId,
+        metadata: {
+          name: name.trim(),
+          category,
+          season: [],
+        },
+        organization: {
+          tags: tags.filter((tag: string) => typeof tag === "string" && tag.trim() !== ""),
+        },
+        usage: {
+          wearCount: 0,
+          favorite: false,
+        },
+        status: "active",
+      });
+
+      // 8. Populate image data for response
+      const populated = await cloth.populate({
+        path: "imageId",
+        select: IMAGE_PROJECTION,
+      });
+
+      // 9. Return created item with 201 status
+      return ApiResponseHandler.created(
+        populated,
+        "Clothing item created successfully"
+      );
+    } catch (createError) {
+      // Handle Mongoose validation errors
+      if (createError instanceof Error) {
+        return ApiResponseHandler.error(
+          `Failed to create clothing item: ${createError.message}`,
+          500
+        );
+      }
+      return ApiResponseHandler.error("Failed to create clothing item", 500);
     }
   }
 );

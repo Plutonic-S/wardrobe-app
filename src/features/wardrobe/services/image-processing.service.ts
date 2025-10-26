@@ -254,8 +254,12 @@ export class ImageProcessingService {
     return new Promise((resolve, reject) => {
       logger.info("Starting Python background removal", { inputPath });
 
+      // Use virtual environment Python with rembg installed
+      // Path: /home/pluto/VsCode-v2/Fyp/butler/.venv/bin/python
+      const pythonPath = "/home/pluto/VsCode-v2/Fyp/butler/.venv/bin/python";
+      
       // Spawn Python process with rembg
-      const pythonProcess = spawn("python3", [
+      const pythonProcess = spawn(pythonPath, [
         "-c",
         `
 from rembg import remove
@@ -450,19 +454,20 @@ except Exception as e:
   private static async createImageRecord(
     userId: string
   ): Promise<IImageDocument> {
-    return await Image.create({
+    // Create a new document without saving (to avoid validation errors)
+    const imageDoc = new Image({
       userId,
-      originalUrl: "",
-      optimizedUrl: "",
-      thumbnailUrl: "",
+      originalUrl: "pending", // Temporary value to pass validation
       processingStatus: "pending",
       dominantColor: "#cccccc",
       colors: [],
-      width: 0,
-      height: 0,
-      size: 0,
+      width: 1, // Temporary value to pass min validation
+      height: 1, // Temporary value to pass min validation
+      size: 1, // Temporary value to pass min validation
       mimeType: "image/png",
     });
+    
+    return imageDoc;
   }
 
   /**

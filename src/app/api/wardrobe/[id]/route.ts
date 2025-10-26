@@ -20,14 +20,15 @@ import {
 export const GET = asyncHandler(
   async (
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ): Promise<NextResponse> => {
     /* 1. Authenticate */
     const { user, error } = await authenticate(req);
     if (error || !user) return error;
 
-    /* 2. Validate ObjectId */
-    if (!Types.ObjectId.isValid(params.id)) {
+    /* 2. Await params and validate ObjectId */
+    const { id } = await params;
+    if (!Types.ObjectId.isValid(id)) {
       return ApiResponseHandler.badRequest("Invalid clothing item ID");
     }
 
@@ -35,7 +36,7 @@ export const GET = asyncHandler(
     await dbConnect();
 
     const item = await Cloth.findOne({
-      _id: params.id,
+      _id: id,
       userId: user.userId, // Ownership check
     })
       .select(CLOTH_PROJECTION)
@@ -64,14 +65,15 @@ export const GET = asyncHandler(
 export const PATCH = asyncHandler(
   async (
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ): Promise<NextResponse> => {
     /* 1. Authenticate */
     const { user, error } = await authenticate(req);
     if (error || !user) return error;
 
-    /* 2. Validate ObjectId */
-    if (!Types.ObjectId.isValid(params.id)) {
+    /* 2. Await params and validate ObjectId */
+    const { id } = await params;
+    if (!Types.ObjectId.isValid(id)) {
       return ApiResponseHandler.badRequest("Invalid clothing item ID");
     }
 
@@ -126,7 +128,7 @@ export const PATCH = asyncHandler(
 
     const updated = await Cloth.findOneAndUpdate(
       {
-        _id: params.id,
+        _id: id,
         userId: user.userId, // Atomic ownership check
       },
       { $set: updateData },
@@ -145,7 +147,7 @@ export const PATCH = asyncHandler(
 
     if (!updated) {
       // Differentiate between not found and forbidden
-      const exists = await Cloth.exists({ _id: params.id });
+      const exists = await Cloth.exists({ _id: id });
       return exists
         ? ApiResponseHandler.forbidden("You do not own this clothing item")
         : ApiResponseHandler.notFound("Clothing item not found");
@@ -165,14 +167,15 @@ export const PATCH = asyncHandler(
 export const DELETE = asyncHandler(
   async (
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ): Promise<NextResponse> => {
     /* 1. Authenticate */
     const { user, error } = await authenticate(req);
     if (error || !user) return error;
 
-    /* 2. Validate ObjectId */
-    if (!Types.ObjectId.isValid(params.id)) {
+    /* 2. Await params and validate ObjectId */
+    const { id } = await params;
+    if (!Types.ObjectId.isValid(id)) {
       return ApiResponseHandler.badRequest("Invalid clothing item ID");
     }
 
@@ -181,7 +184,7 @@ export const DELETE = asyncHandler(
 
     const deleted = await Cloth.findOneAndUpdate(
       {
-        _id: params.id,
+        _id: id,
         userId: user.userId, // Ownership check
         status: { $ne: "disposed" }, // Prevent duplicate deletions
       },
@@ -193,7 +196,7 @@ export const DELETE = asyncHandler(
 
     if (!deleted) {
       // Check if item exists but is already deleted or doesn't belong to user
-      const item = await Cloth.findById(params.id).select("userId status").lean();
+      const item = await Cloth.findById(id).select("userId status").lean();
       
       if (!item) {
         return ApiResponseHandler.notFound("Clothing item not found");
@@ -209,7 +212,7 @@ export const DELETE = asyncHandler(
     /* 4. Return success */
     return ApiResponseHandler.success(
       {
-        id: params.id,
+        id,
         deleted: true,
         status: "disposed",
       },
