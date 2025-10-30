@@ -1,5 +1,6 @@
 import { HorizontalHeader } from '@/components/layouts/HorizontalHeader';
 import { VerticalHeader } from '@/components/layouts/VerticalHeader';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata = {
   title: 'Digital Wardrobe',
@@ -14,11 +15,12 @@ export default function MainLayout({
   return (
     <div className="min-h-screen bg-background">
       <VerticalHeader />
-      <main className="pl-15">
+      <main className="md:pl-15">
         <HorizontalHeader/>
 
         {children}
       </main>
+      <Toaster />
     </div>
   );
 }

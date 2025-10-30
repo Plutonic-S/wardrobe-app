@@ -13,6 +13,54 @@ import {
   CLOTH_PROJECTION,
   IMAGE_PROJECTION,
 } from "@/features/wardrobe/types/cloth-api.types";
+import { ClothResponse } from "@/features/wardrobe/types/wardrobe.types";
+
+/**
+ * Transform Mongoose Cloth document to flattened ClothResponse
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformClothToResponse(cloth: any): ClothResponse {
+  const image = cloth.imageId || {};
+  
+  return {
+    id: cloth._id.toString(),
+    userId: cloth.userId.toString(),
+    
+    // Image data
+    originalUrl: image.originalUrl || "",
+    optimizedUrl: image.optimizedUrl || "",
+    thumbnailUrl: image.thumbnailUrl || "",
+    dominantColor: image.dominantColor || "#CCCCCC",
+    colors: image.colors || [],
+    imageWidth: image.width || 0,
+    imageHeight: image.height || 0,
+    imageSize: image.size || 0,
+    processingStatus: image.processingStatus || "pending",
+    
+    // Metadata (flattened)
+    name: cloth.metadata?.name || "",
+    category: cloth.metadata?.category || "tops",
+    subcategory: cloth.metadata?.subcategory || "",
+    season: cloth.metadata?.season || [],
+    styleType: cloth.metadata?.styleType || "",
+    
+    // Organization (flattened)
+    tags: cloth.organization?.tags || [],
+    brand: cloth.organization?.brand,
+    purchaseDate: cloth.organization?.purchaseDate,
+    price: cloth.organization?.price,
+    
+    // Usage (flattened)
+    lastWornDate: cloth.usage?.lastWornDate,
+    wearCount: cloth.usage?.wearCount || 0,
+    favorite: cloth.usage?.favorite || false,
+    
+    // Status and timestamps
+    status: cloth.status || "active",
+    createdAt: cloth.createdAt,
+    updatedAt: cloth.updatedAt,
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /*  GET – Retrieve single clothing item                               */
@@ -51,9 +99,10 @@ export const GET = asyncHandler(
       return ApiResponseHandler.notFound("Clothing item not found");
     }
 
-    /* 4. Return success */
+    /* 4. Transform and return success */
+    const transformedItem = transformClothToResponse(item);
     return ApiResponseHandler.success(
-      item,
+      transformedItem,
       "Clothing item retrieved successfully"
     );
   }
@@ -153,9 +202,10 @@ export const PATCH = asyncHandler(
         : ApiResponseHandler.notFound("Clothing item not found");
     }
 
-    /* 6. Return updated item */
+    /* 6. Transform and return updated item */
+    const transformedItem = transformClothToResponse(updated);
     return ApiResponseHandler.success(
-      updated,
+      transformedItem,
       "Clothing item updated successfully"
     );
   }

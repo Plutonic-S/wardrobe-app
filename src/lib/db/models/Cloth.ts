@@ -110,8 +110,10 @@ const metadataSchema = new Schema(
     },
     subcategory: { type: String },
     season: {
-      type: [String],
-      enum: ["spring", "summer", "autumn", "winter"],
+      type: [{
+        type: String,
+        enum: ["spring", "summer", "autumn", "winter"],
+      }],
       default: [],
     },
     styleType: { type: String },
@@ -474,7 +476,7 @@ clothSchema.statics.getFilteredItems = async function (
   }
 
   if (filters.season) {
-    query["metadata.season"] = filters.season;
+    query["metadata.season"] = { $in: [filters.season] };
   }
 
   if (filters.favorite !== undefined) {

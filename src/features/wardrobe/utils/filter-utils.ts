@@ -36,14 +36,48 @@ export function filterWardrobeItems(
       return false;
     }
 
-    // Season filter
-    if (filters.season && !item.season.includes(filters.season)) {
-      return false;
+    // Season filter (now supports multiple seasons)
+    if (filters.season && filters.season.length > 0) {
+      // Handle case where item.season might not be an array (legacy data)
+      const itemSeasons = Array.isArray(item.season) ? item.season : [];
+      
+      const hasAnySeason = filters.season.some((filterSeason) =>
+        itemSeasons.includes(filterSeason)
+      );
+      
+      if (!hasAnySeason) {
+        return false;
+      }
     }
 
-    // Style type filter
-    if (filters.styleType && item.styleType !== filters.styleType) {
-      return false;
+    // Subcategory filter (item must match any of the selected subcategories)
+    if (filters.subcategory && filters.subcategory.length > 0) {
+      const matchesSubcategory = filters.subcategory.some(
+        (filterSub) => item.subcategory?.toLowerCase() === filterSub.toLowerCase()
+      );
+      if (!matchesSubcategory) {
+        return false;
+      }
+    }
+
+    // Style type filter (item must match any of the selected styles)
+    if (filters.styleType && filters.styleType.length > 0) {
+      const matchesStyle = filters.styleType.some(
+        (filterStyle) => item.styleType?.toLowerCase() === filterStyle.toLowerCase()
+      );
+      if (!matchesStyle) {
+        return false;
+      }
+    }
+
+    // Brand filter (item must match any of the selected brands)
+    if (filters.brand && filters.brand.length > 0) {
+      const matchesBrand = filters.brand.some(
+        (filterBrand) => item.brand?.toLowerCase() === filterBrand.toLowerCase()
+      );
+      if (!matchesBrand) {
+        return false;
+      }
     }
 
     // Favorite filter
@@ -68,12 +102,40 @@ export function filterWardrobeItems(
       }
     }
 
+    // Price range filter
+    if (filters.priceMin !== undefined && item.price !== undefined) {
+      if (item.price < filters.priceMin) {
+        return false;
+      }
+    }
+    if (filters.priceMax !== undefined && item.price !== undefined) {
+      if (item.price > filters.priceMax) {
+        return false;
+      }
+    }
+
+    // Purchase date range filter
+    if (filters.purchaseDateFrom && item.purchaseDate) {
+      const itemDate = new Date(item.purchaseDate);
+      const fromDate = new Date(filters.purchaseDateFrom);
+      if (itemDate < fromDate) {
+        return false;
+      }
+    }
+    if (filters.purchaseDateTo && item.purchaseDate) {
+      const itemDate = new Date(item.purchaseDate);
+      const toDate = new Date(filters.purchaseDateTo);
+      if (itemDate > toDate) {
+        return false;
+      }
+    }
+
     // Search term filter (searches in name, subcategory, brand, and tags)
     if (filters.searchTerm && filters.searchTerm.trim() !== "") {
       const searchLower = filters.searchTerm.toLowerCase().trim();
       const searchableFields = [
         item.name.toLowerCase(),
-        item.subcategory.toLowerCase(),
+        item.subcategory?.toLowerCase() || "",
         item.brand?.toLowerCase() || "",
         ...item.tags.map((tag) => tag.toLowerCase()),
       ];

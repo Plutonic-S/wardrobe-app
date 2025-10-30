@@ -121,6 +121,20 @@ export function WardrobeSidebar({
   const [searchTerm, setSearchTerm] = useState(filters.searchTerm || "");
   const [tagInput, setTagInput] = useState("");
   const [localTags, setLocalTags] = useState<string[]>(filters.tags || []);
+  const [subcategoryInput, setSubcategoryInput] = useState("");
+  const [localSubcategories, setLocalSubcategories] = useState<string[]>(filters.subcategory || []);
+  const [brandInput, setBrandInput] = useState("");
+  const [localBrands, setLocalBrands] = useState<string[]>(filters.brand || []);
+  const [styleInput, setStyleInput] = useState("");
+  const [localStyles, setLocalStyles] = useState<string[]>(filters.styleType || []);
+  const [priceMin, setPriceMin] = useState(filters.priceMin?.toString() || "");
+  const [priceMax, setPriceMax] = useState(filters.priceMax?.toString() || "");
+  const [dateFrom, setDateFrom] = useState(
+    filters.purchaseDateFrom ? new Date(filters.purchaseDateFrom).toISOString().split('T')[0] : ""
+  );
+  const [dateTo, setDateTo] = useState(
+    filters.purchaseDateTo ? new Date(filters.purchaseDateTo).toISOString().split('T')[0] : ""
+  );
 
   /**
    * Category navigation configuration
@@ -222,12 +236,17 @@ export function WardrobeSidebar({
   );
 
   /**
-   * Handle season filter selection
+   * Handle season filter selection (now supports multiple)
    */
   const handleSeasonToggle = (season: Season) => {
+    const currentSeasons = filters.season || [];
+    const newSeasons = currentSeasons.includes(season)
+      ? currentSeasons.filter(s => s !== season)
+      : [...currentSeasons, season];
+    
     onFiltersChange({
       ...filters,
-      season: filters.season === season ? undefined : season,
+      season: newSeasons.length > 0 ? newSeasons : undefined,
     });
   };
 
@@ -264,12 +283,119 @@ export function WardrobeSidebar({
   };
 
   /**
+   * Handle subcategory addition
+   */
+  const handleAddSubcategory = () => {
+    const trimmed = subcategoryInput.trim();
+    if (trimmed && !localSubcategories.includes(trimmed)) {
+      const newSubcategories = [...localSubcategories, trimmed];
+      setLocalSubcategories(newSubcategories);
+      onFiltersChange({ ...filters, subcategory: newSubcategories });
+      setSubcategoryInput("");
+    }
+  };
+
+  /**
+   * Handle subcategory removal
+   */
+  const handleRemoveSubcategory = (item: string) => {
+    const newSubcategories = localSubcategories.filter((s) => s !== item);
+    setLocalSubcategories(newSubcategories);
+    onFiltersChange({ ...filters, subcategory: newSubcategories.length > 0 ? newSubcategories : undefined });
+  };
+
+  /**
+   * Handle brand addition
+   */
+  const handleAddBrand = () => {
+    const trimmed = brandInput.trim();
+    if (trimmed && !localBrands.includes(trimmed)) {
+      const newBrands = [...localBrands, trimmed];
+      setLocalBrands(newBrands);
+      onFiltersChange({ ...filters, brand: newBrands });
+      setBrandInput("");
+    }
+  };
+
+  /**
+   * Handle brand removal
+   */
+  const handleRemoveBrand = (item: string) => {
+    const newBrands = localBrands.filter((b) => b !== item);
+    setLocalBrands(newBrands);
+    onFiltersChange({ ...filters, brand: newBrands.length > 0 ? newBrands : undefined });
+  };
+
+  /**
+   * Handle style type addition
+   */
+  const handleAddStyle = () => {
+    const trimmed = styleInput.trim();
+    if (trimmed && !localStyles.includes(trimmed)) {
+      const newStyles = [...localStyles, trimmed];
+      setLocalStyles(newStyles);
+      onFiltersChange({ ...filters, styleType: newStyles });
+      setStyleInput("");
+    }
+  };
+
+  /**
+   * Handle style type removal
+   */
+  const handleRemoveStyle = (item: string) => {
+    const newStyles = localStyles.filter((s) => s !== item);
+    setLocalStyles(newStyles);
+    onFiltersChange({ ...filters, styleType: newStyles.length > 0 ? newStyles : undefined });
+  };
+
+  /**
+   * Handle price filter change
+   */
+  const handlePriceChange = (min: string, max: string) => {
+    setPriceMin(min);
+    setPriceMax(max);
+    
+    const minNum = min ? parseFloat(min) : undefined;
+    const maxNum = max ? parseFloat(max) : undefined;
+    
+    onFiltersChange({
+      ...filters,
+      priceMin: minNum && !isNaN(minNum) ? minNum : undefined,
+      priceMax: maxNum && !isNaN(maxNum) ? maxNum : undefined,
+    });
+  };
+
+  /**
+   * Handle date filter change
+   */
+  const handleDateChange = (from: string, to: string) => {
+    setDateFrom(from);
+    setDateTo(to);
+    
+    onFiltersChange({
+      ...filters,
+      purchaseDateFrom: from ? new Date(from) : undefined,
+      purchaseDateTo: to ? new Date(to) : undefined,
+    });
+  };
+
+  /**
    * Clear all filters
    */
   const handleClearFilters = () => {
     setSearchTerm("");
     setLocalTags([]);
     setTagInput("");
+    setLocalSubcategories([]);
+    setSubcategoryInput("");
+    setLocalBrands([]);
+    setBrandInput("");
+    setLocalStyles([]);
+    setStyleInput("");
+    setPriceMin("");
+    setPriceMax("");
+    setDateFrom("");
+    setDateTo("");
     onFiltersChange({});
     onNavigate(null);
   };
@@ -280,10 +406,17 @@ export function WardrobeSidebar({
   const activeFilterCount = [
     filters.searchTerm,
     filters.category,
-    filters.season,
+    filters.season?.length,
+    filters.subcategory?.length,
+    filters.brand?.length,
+    filters.styleType?.length,
     filters.favorite,
     filters.status,
     filters.tags?.length,
+    filters.priceMin,
+    filters.priceMax,
+    filters.purchaseDateFrom,
+    filters.purchaseDateTo,
   ].filter(Boolean).length;
 
   /**
@@ -416,9 +549,9 @@ export function WardrobeSidebar({
                 <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
                   <div className="flex items-center gap-2">
                     <span>Season</span>
-                    {filters.season && (
+                    {filters.season && filters.season.length > 0 && (
                       <Badge variant="secondary" className="text-xs">
-                        1
+                        {filters.season.length}
                       </Badge>
                     )}
                   </div>
@@ -428,7 +561,7 @@ export function WardrobeSidebar({
                     <div key={season} className="flex items-center space-x-2">
                       <Checkbox
                         id={`season-${season}`}
-                        checked={filters.season === season}
+                        checked={(filters.season || []).includes(season)}
                         onCheckedChange={() => handleSeasonToggle(season)}
                         aria-label={`Filter by ${season}`}
                       />
@@ -534,6 +667,282 @@ export function WardrobeSidebar({
                       ))}
                     </div>
                   )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Subcategory Filter */}
+              <AccordionItem value="subcategory" className="border-b-0">
+                <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <span>Subcategory</span>
+                    {localSubcategories.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {localSubcategories.length}
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pb-4">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Add subcategory..."
+                      value={subcategoryInput}
+                      onChange={(e) => setSubcategoryInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddSubcategory();
+                        }
+                      }}
+                      className="flex-1"
+                      aria-label="Add subcategory filter"
+                    />
+                    <Button
+                      onClick={handleAddSubcategory}
+                      size="sm"
+                      disabled={!subcategoryInput.trim()}
+                      aria-label="Add subcategory"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {localSubcategories.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {localSubcategories.map((item) => (
+                        <Badge
+                          key={item}
+                          variant="secondary"
+                          className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+                        >
+                          <span className="text-xs">{item}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => handleRemoveSubcategory(item)}
+                            className="h-4 w-4 rounded-full hover:bg-destructive/20"
+                            aria-label={`Remove ${item} subcategory`}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Brand Filter */}
+              <AccordionItem value="brand" className="border-b-0">
+                <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <span>Brand</span>
+                    {localBrands.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {localBrands.length}
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pb-4">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Add brand..."
+                      value={brandInput}
+                      onChange={(e) => setBrandInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddBrand();
+                        }
+                      }}
+                      className="flex-1"
+                      aria-label="Add brand filter"
+                    />
+                    <Button
+                      onClick={handleAddBrand}
+                      size="sm"
+                      disabled={!brandInput.trim()}
+                      aria-label="Add brand"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {localBrands.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {localBrands.map((item) => (
+                        <Badge
+                          key={item}
+                          variant="secondary"
+                          className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+                        >
+                          <span className="text-xs">{item}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => handleRemoveBrand(item)}
+                            className="h-4 w-4 rounded-full hover:bg-destructive/20"
+                            aria-label={`Remove ${item} brand`}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Style Type Filter */}
+              <AccordionItem value="style" className="border-b-0">
+                <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <span>Style Type</span>
+                    {localStyles.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {localStyles.length}
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pb-4">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Add style..."
+                      value={styleInput}
+                      onChange={(e) => setStyleInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddStyle();
+                        }
+                      }}
+                      className="flex-1"
+                      aria-label="Add style filter"
+                    />
+                    <Button
+                      onClick={handleAddStyle}
+                      size="sm"
+                      disabled={!styleInput.trim()}
+                      aria-label="Add style"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {localStyles.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {localStyles.map((item) => (
+                        <Badge
+                          key={item}
+                          variant="secondary"
+                          className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+                        >
+                          <span className="text-xs">{item}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => handleRemoveStyle(item)}
+                            className="h-4 w-4 rounded-full hover:bg-destructive/20"
+                            aria-label={`Remove ${item} style`}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Price Range Filter */}
+              <AccordionItem value="price" className="border-b-0">
+                <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <span>Price Range</span>
+                    {(filters.priceMin || filters.priceMax) && (
+                      <Badge variant="secondary" className="text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pb-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="price-min" className="text-xs text-muted-foreground mb-1 block">
+                        Min ($)
+                      </Label>
+                      <Input
+                        id="price-min"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={priceMin}
+                        onChange={(e) => handlePriceChange(e.target.value, priceMax)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="price-max" className="text-xs text-muted-foreground mb-1 block">
+                        Max ($)
+                      </Label>
+                      <Input
+                        id="price-max"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Any"
+                        value={priceMax}
+                        onChange={(e) => handlePriceChange(priceMin, e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Purchase Date Range Filter */}
+              <AccordionItem value="purchase-date" className="border-b-0">
+                <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <span>Purchase Date</span>
+                    {(filters.purchaseDateFrom || filters.purchaseDateTo) && (
+                      <Badge variant="secondary" className="text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pb-4">
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="date-from" className="text-xs text-muted-foreground mb-1 block">
+                        From
+                      </Label>
+                      <Input
+                        id="date-from"
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => handleDateChange(e.target.value, dateTo)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="date-to" className="text-xs text-muted-foreground mb-1 block">
+                        To
+                      </Label>
+                      <Input
+                        id="date-to"
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => handleDateChange(dateFrom, e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

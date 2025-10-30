@@ -29,31 +29,8 @@ interface SidebarToggleButtonProps {
 export function SidebarToggleButton({
   isCollapsed,
   onClick,
-  isMobile = false,
   className,
 }: SidebarToggleButtonProps) {
-  if (isMobile) {
-    return (
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={onClick}
-        className={cn(
-          "h-10 w-10",
-          "bg-white dark:bg-gray-950",
-          "border-gray-200 dark:border-gray-800",
-          "hover:bg-gray-50 dark:hover:bg-gray-900",
-          "shadow-lg",
-          className
-        )}
-        aria-label="Open filters"
-        aria-expanded={false}
-      >
-        <SlidersHorizontal className="h-5 w-5" />
-      </Button>
-    );
-  }
-
   return (
     <Button
       variant="ghost"
@@ -122,7 +99,7 @@ export function MobileSidebarTrigger({
           {activeFilterCount > 0 && (
             <span
               className={cn(
-                "absolute -top-2 -right-2",
+                "absolute -top-6 -right-5",
                 "flex items-center justify-center",
                 "h-5 w-5 rounded-full",
                 "bg-destructive text-destructive-foreground",

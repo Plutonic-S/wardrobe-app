@@ -219,6 +219,20 @@ export default function WardrobePage() {
       }
     }
 
+    // If metadata contains seasons, add them to the sidebar filter
+    if (metadata?.season && Array.isArray(metadata.season) && metadata.season.length > 0) {
+      const existingSeasons = filters.season || [];
+      const newSeasons = metadata.season.filter((s) => !existingSeasons.includes(s));
+      
+      if (newSeasons.length > 0) {
+        setFilters({
+          ...filters,
+          season: [...existingSeasons, ...newSeasons],
+        });
+        console.log('✅ Added seasons to filters:', newSeasons);
+      }
+    }
+
     // Refresh the wardrobe items
     try {
       const response = await fetch('/api/wardrobe', {
@@ -286,7 +300,7 @@ export default function WardrobePage() {
           </div>
         )}
 
-        <div className={cn("p-6 md:p-8", isCollapsed && "ml-12")}>
+        <div className={cn("p-6 md:p-8", isCollapsed && "md:ml-12")}>
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>

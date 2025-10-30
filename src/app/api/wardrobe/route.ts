@@ -221,7 +221,7 @@ export const POST = asyncHandler(
       return ApiResponseHandler.badRequest("Invalid JSON in request body");
     }
 
-    const { imageId, name, category, tags = [] } = body;
+    const { imageId, name, category, season = [], subcategory, styleType, brand, purchaseDate, price, tags = [] } = body;
 
     // 4. Validate required fields
     if (!imageId) {
@@ -280,10 +280,15 @@ export const POST = asyncHandler(
         metadata: {
           name: name.trim(),
           category,
-          season: [],
+          season: Array.isArray(season) ? season : [],
+          subcategory: subcategory?.trim(),
+          styleType: styleType?.trim(),
         },
         organization: {
           tags: tags.filter((tag: string) => typeof tag === "string" && tag.trim() !== ""),
+          brand: brand?.trim(),
+          purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
+          price: price !== undefined && !isNaN(Number(price)) ? Number(price) : undefined,
         },
         usage: {
           wearCount: 0,

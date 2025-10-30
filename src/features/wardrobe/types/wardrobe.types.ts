@@ -238,12 +238,18 @@ export interface UpdateClothInput {
  */
 export interface ClothFilters {
   category?: ClothCategory;
-  season?: Season;
-  styleType?: StyleType;
+  season?: Season[];  // Changed to array to support multiple seasons
+  subcategory?: string[];
+  styleType?: string[];
+  brand?: string[];
   favorite?: boolean;
   status?: ClothStatus;
   tags?: string[];
   searchTerm?: string;
+  priceMin?: number;
+  priceMax?: number;
+  purchaseDateFrom?: Date;
+  purchaseDateTo?: Date;
 }
 
 /**

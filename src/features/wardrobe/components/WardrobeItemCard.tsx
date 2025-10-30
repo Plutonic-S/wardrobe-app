@@ -80,7 +80,7 @@ export function WardrobeItemCard({
           unoptimized
           className="object-cover transition-transform duration-500 ease-out"
           style={{
-            transform: isHovered ? "scale(1.05)" : "scale(1)",
+            transform: isHovered ? "scale(1.03)" : "scale(1)",
           }}
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
           priority={false}

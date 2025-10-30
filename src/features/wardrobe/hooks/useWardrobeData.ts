@@ -208,14 +208,14 @@ export function useWardrobeData({
       setActiveCategory(category);
 
       if (category === "favorites") {
-        setFilters({ ...filters, favorite: true, category: undefined });
+        setFilters((prev) => ({ ...prev, favorite: true, category: undefined }));
       } else if (category) {
-        setFilters({ ...filters, category, favorite: undefined });
+        setFilters((prev) => ({ ...prev, category, favorite: undefined }));
       } else {
-        setFilters({ ...filters, category: undefined, favorite: undefined });
+        setFilters((prev) => ({ ...prev, category: undefined, favorite: undefined }));
       }
     },
-    [filters, setFilters]
+    [setFilters]
   );
 
   /**

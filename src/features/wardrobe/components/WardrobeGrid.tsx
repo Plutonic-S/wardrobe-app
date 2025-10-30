@@ -158,7 +158,7 @@ export function WardrobeGrid({
         clearTimeout(announcementTimeoutRef.current);
       }
     };
-  }, [filteredItems.length, isLoading, filters]);
+  }, [filteredItems.length, isLoading]);
 
   /**
    * Handle favorite toggle with optimistic update
@@ -260,11 +260,11 @@ export function WardrobeGrid({
               <div className="flex items-center justify-between">
                 <h2
                   id={`category-${category}`}
-                  className="text-xl font-bold text-gray-900 dark:text-gray-100 capitalize"
+                  className="text-xl font-bold text-foreground capitalize"
                 >
                   {getCategoryDisplayName(category)}
                 </h2>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   {categoryItems.length} {categoryItems.length === 1 ? "item" : "items"}
                 </span>
               </div>
