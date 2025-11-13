@@ -27,7 +27,7 @@ export function VerticalHeader() {
   const navItems = [
     { icon: Home, path: "/feed", label: "Feed" },
     { icon: Shirt, path: "/wardrobe", label: "Wardrobe" },
-    { icon: PlusSquare, path: "/create-outfit", label: "Create Outfit" },
+    { icon: PlusSquare, path: "/outfits", label: "Create Outfit" },
     { icon: Bell, path: "/notifications", label: "Notifications" },
     { icon: PieChart, path: "/analytics", label: "Analytics" },
   ];
