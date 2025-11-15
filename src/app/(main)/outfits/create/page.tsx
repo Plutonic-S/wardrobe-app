@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { useOutfitBuilder } from '@/features/outfit-builder/hooks/useOutfitBuilder';
@@ -11,7 +11,7 @@ import type { OutfitMetadata } from '@/features/outfit-builder/types/outfit.type
 import {
   ModeSelector,
   DressMeMode,
-  CanvasPlaceholder,
+  CanvasMode,
   OutfitSaveDialog,
 } from '@/features/outfit-builder/components';
 
@@ -31,16 +31,19 @@ export default function CreateOutfitPage() {
     wardrobeItems,
     setWardrobeItems,
     categoryIndexes,
+    setCategoryIndex,
     navigateCategory,
     lockedCategories,
     toggleCategoryLock,
     shuffleUnlocked,
+    canvasItems,
     saveOutfit,
     isLoading: isSaving,
   } = useOutfitBuilder();
 
   // Local state
   const [isLoadingWardrobe, setIsLoadingWardrobe] = useState(true);
+  const hasLoadedRef = useRef(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [outfitMetadata, setOutfitMetadata] = useState<Partial<OutfitMetadata>>({
     name: '',
@@ -53,7 +56,10 @@ export default function CreateOutfitPage() {
   useEffect(() => {
     const fetchWardrobe = async () => {
       try {
-        setIsLoadingWardrobe(true);
+        // Only show loading spinner on initial load
+        if (!hasLoadedRef.current) {
+          setIsLoadingWardrobe(true);
+        }
         const response = await fetch('/api/wardrobe', {
           credentials: 'include',
         });
@@ -67,6 +73,7 @@ export default function CreateOutfitPage() {
         console.error('Error fetching wardrobe:', error);
       } finally {
         setIsLoadingWardrobe(false);
+        hasLoadedRef.current = true;
       }
     };
 
@@ -74,6 +81,21 @@ export default function CreateOutfitPage() {
       fetchWardrobe();
     }
   }, [user, setWardrobeItems]);
+
+  // Initialize category indexes when wardrobe items or configuration changes
+  useEffect(() => {
+    if (wardrobeItems.length === 0) return;
+
+    const categories = getCategories();
+    categories.forEach((category) => {
+      const categoryItems = wardrobeItems.filter((item) => item.category === category);
+      if (categoryItems.length > 0 && categoryIndexes[category] === undefined) {
+        console.log(`[Init] Setting ${category} index to 0 (has ${categoryItems.length} items)`);
+        setCategoryIndex(category, 0);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wardrobeItems, configuration]);
 
   // Get categories based on configuration
   const getCategories = () => {
@@ -102,6 +124,38 @@ export default function CreateOutfitPage() {
   // Handle save
   const handleSave = async () => {
     try {
+      console.log('[handleSave] Mode:', mode);
+      console.log('[handleSave] CategoryIndexes:', categoryIndexes);
+      console.log('[handleSave] CanvasItems:', canvasItems);
+      
+      // Validate that we have at least one item in dress-me mode
+      if (mode === 'dress-me') {
+        const categories = getCategories();
+        console.log('[handleSave] Categories for config:', categories);
+        
+        // Check if we have valid indexes for the current configuration
+        const hasValidItems = categories.some(cat => {
+          const index = categoryIndexes[cat];
+          const items = itemsByCategory[cat] || [];
+          const hasItem = index !== undefined && items[index] !== undefined;
+          console.log(`[handleSave] ${cat}: index=${index}, hasItems=${items.length}, valid=${hasItem}`);
+          return hasItem;
+        });
+        
+        if (!hasValidItems) {
+          alert('Please select at least one clothing item before saving');
+          return;
+        }
+      }
+
+      // Validate that we have items on canvas in canvas mode
+      if (mode === 'canvas') {
+        if (canvasItems.length === 0) {
+          alert('Please add at least one item to the canvas before saving');
+          return;
+        }
+      }
+
       const metadata: OutfitMetadata = {
         name: outfitMetadata.name || 'Untitled Outfit',
         description: outfitMetadata.description,
@@ -109,7 +163,9 @@ export default function CreateOutfitPage() {
         season: outfitMetadata.season || [],
       };
 
+      console.log('[handleSave] Saving with metadata:', metadata);
       const outfitId = await saveOutfit(metadata);
+      console.log('[handleSave] Saved outfit ID:', outfitId);
       router.push(`/outfits/${outfitId}`);
     } catch (error) {
       console.error('Error saving outfit:', error);
@@ -189,7 +245,7 @@ export default function CreateOutfitPage() {
         )}
 
         {/* Canvas Mode */}
-        {mode === 'canvas' && <CanvasPlaceholder />}
+        {mode === 'canvas' && <CanvasMode />}
       </div>
 
       {/* Save Dialog */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, Heart, Calendar, Trash2, Filter, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { OutfitResponse } from '@/features/outfit-builder/types/outfit.types';
@@ -27,16 +37,24 @@ export default function OutfitsGalleryPage() {
   // Outfit state
   const [outfits, setOutfits] = useState<OutfitResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
 
   // Filter state
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
 
+  // Delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [outfitToDelete, setOutfitToDelete] = useState<string | null>(null);
+
   // Fetch outfits from API
   useEffect(() => {
     const fetchOutfits = async () => {
       try {
-        setIsLoading(true);
+        // Only show skeleton on initial load, not on filter/sort changes
+        if (!hasLoadedRef.current) {
+          setIsLoading(true);
+        }
         const params = new URLSearchParams({
           sortBy: sortMode === 'recent' ? 'createdAt' : sortMode === 'name' ? 'name' : 'wearCount',
           sortOrder: 'desc',
@@ -55,7 +73,12 @@ export default function OutfitsGalleryPage() {
         if (response.ok) {
           const data = await response.json();
           const items = data.data?.outfits || [];
-          setOutfits(items);
+          // Transform _id to id for frontend compatibility
+          const transformedItems = items.map((item: OutfitResponse & { _id?: string }) => ({
+            ...item,
+            id: item._id?.toString() || item.id,
+          }));
+          setOutfits(transformedItems);
         } else {
           console.error('Failed to fetch outfits:', response.status);
           setOutfits([]);
@@ -65,6 +88,7 @@ export default function OutfitsGalleryPage() {
         setOutfits([]);
       } finally {
         setIsLoading(false);
+        hasLoadedRef.current = true;
       }
     };
 
@@ -74,20 +98,37 @@ export default function OutfitsGalleryPage() {
   }, [user, filterMode, sortMode]);
 
   // Handle outfit actions
-  const handleDelete = async (outfitId: string) => {
-    if (!confirm('Are you sure you want to delete this outfit?')) return;
+  const handleDeleteClick = (outfitId: string) => {
+    setOutfitToDelete(outfitId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!outfitToDelete) return;
 
     try {
-      const response = await fetch(`/api/outfits/${outfitId}`, {
+      console.log('[Delete] Deleting outfit ID:', outfitToDelete);
+      const response = await fetch(`/api/outfits/${outfitToDelete}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
-        setOutfits(prev => prev.filter(o => o.id !== outfitId));
+        console.log('[Delete] Delete successful, filtering out:', outfitToDelete);
+        console.log('[Delete] Current outfits:', outfits.map(o => o.id));
+        setOutfits(prev => {
+          const filtered = prev.filter(o => o.id !== outfitToDelete);
+          console.log('[Delete] After filter:', filtered.length, 'outfits remaining');
+          return filtered;
+        });
+      } else {
+        console.error('[Delete] Delete failed:', response.status);
       }
     } catch (error) {
       console.error('Error deleting outfit:', error);
+    } finally {
+      setDeleteDialogOpen(false);
+      setOutfitToDelete(null);
     }
   };
 
@@ -98,7 +139,9 @@ export default function OutfitsGalleryPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          'usage.favorite': !currentFavorite,
+          usage: {
+            favorite: !currentFavorite,
+          },
         }),
       });
 
@@ -327,7 +370,7 @@ export default function OutfitsGalleryPage() {
                     variant="secondary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(outfit.id);
+                      handleDeleteClick(outfit.id);
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -338,6 +381,27 @@ export default function OutfitsGalleryPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Outfit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this outfit? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

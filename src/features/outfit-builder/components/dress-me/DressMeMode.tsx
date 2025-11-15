@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CategorySlider } from './CategorySlider';
 import { ConfigurationSelector } from './ConfigurationSelector';
 import type { ClothResponse } from '@/features/wardrobe/types/wardrobe.types';
@@ -52,51 +52,38 @@ export function DressMeMode({
         onShuffle={onShuffle}
       />
 
-      {/* Category Sliders with staggered animation */}
-      <motion.div
-        className="space-y-3 sm:space-y-4"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          visible: {
-            transition: {
-              staggerChildren: 0.1,
-            },
-          },
-        }}
-      >
-        {categories.map((category, index) => {
-          const items = itemsByCategory[category] || [];
-          const currentIndex = categoryIndexes[category] || 0;
-          const isLocked = lockedCategories.includes(category);
+      {/* Category Sliders */}
+      <div className="space-y-3 sm:space-y-4">
+        <AnimatePresence mode="sync">
+          {categories.map((category) => {
+            const items = itemsByCategory[category] || [];
+            const currentIndex = categoryIndexes[category] || 0;
+            const isLocked = lockedCategories.includes(category);
 
-          return (
-            <motion.div
-              key={category}
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              transition={{
-                duration: 0.3,
-                delay: index * 0.05,
-              }}
-            >
-              <CategorySlider
-                category={category}
-                label={CATEGORY_LABELS[category] || category}
-                items={items}
-                currentIndex={currentIndex}
-                isLocked={isLocked}
-                onNavigate={(direction) =>
-                  onNavigateCategory(category, direction, items.length)
-                }
-                onToggleLock={() => onToggleCategoryLock(category)}
-              />
-            </motion.div>
-          );
-        })}
-      </motion.div>
+            return (
+              <motion.div
+                key={category}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <CategorySlider
+                  category={category}
+                  label={CATEGORY_LABELS[category] || category}
+                  items={items}
+                  currentIndex={currentIndex}
+                  isLocked={isLocked}
+                  onNavigate={(direction) =>
+                    onNavigateCategory(category, direction, items.length)
+                  }
+                  onToggleLock={() => onToggleCategoryLock(category)}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }

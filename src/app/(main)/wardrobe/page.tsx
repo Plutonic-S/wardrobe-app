@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ export default function WardrobePage() {
   // Wardrobe items state
   const [wardrobeItems, setWardrobeItems] = useState<ClothResponse[]>([]);
   const [isFetchingItems, setIsFetchingItems] = useState(true);
+  const hasLoadedRef = useRef(false);
 
   // Edit mode state
   const [editMode, setEditMode] = useState<EditMode>(null);
@@ -51,7 +52,10 @@ export default function WardrobePage() {
   useEffect(() => {
     const fetchWardrobeItems = async () => {
       try {
-        setIsFetchingItems(true);
+        // Only show skeleton on initial load
+        if (!hasLoadedRef.current) {
+          setIsFetchingItems(true);
+        }
         const url = `${window.location.origin}/api/wardrobe`;
         console.log('🔍 Fetching wardrobe items from:', url);
 
@@ -85,6 +89,7 @@ export default function WardrobePage() {
         setWardrobeItems([]); // Set empty array on error
       } finally {
         setIsFetchingItems(false);
+        hasLoadedRef.current = true;
       }
     };
 

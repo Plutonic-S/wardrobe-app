@@ -202,6 +202,15 @@ export const updateOutfitSchema = z.object({
     })
     .optional(),
   
+  // Usage tracking (optional)
+  usage: z
+    .object({
+      lastWornDate: z.coerce.date().optional(),
+      wearCount: z.number().min(0).optional(),
+      favorite: z.boolean().optional(),
+    })
+    .optional(),
+
   // Status (optional)
   status: z.enum(['active', 'archived', 'deleted']).optional(),
 });

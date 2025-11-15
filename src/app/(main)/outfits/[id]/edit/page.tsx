@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { useOutfitBuilder } from '@/features/outfit-builder/hooks/useOutfitBuilder';
@@ -96,15 +96,17 @@ export default function EditOutfitPage() {
     }
   };
 
-  // Group items by category
-  const itemsByCategory = wardrobeItems.reduce((acc, item) => {
-    const category = item.category;
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(item);
-    return acc;
-  }, {} as Record<string, ClothResponse[]>);
+  // Group items by category (memoized to prevent infinite loops in useEffect)
+  const itemsByCategory = useMemo(() => {
+    return wardrobeItems.reduce((acc, item) => {
+      const category = item.category;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(item);
+      return acc;
+    }, {} as Record<string, ClothResponse[]>);
+  }, [wardrobeItems]);
 
   // Fetch and load outfit
   useEffect(() => {
@@ -201,13 +203,20 @@ export default function EditOutfitPage() {
       };
 
       if (mode === 'dress-me') {
+        // Convert category indexes to actual item IDs
+        const getItemId = (category: string, index?: number) => {
+          if (index === undefined) return undefined;
+          const categoryItems = itemsByCategory[category];
+          return categoryItems?.[index]?.id;
+        };
+
         updates.combination = {
           configuration,
           items: {
-            tops: categoryIndexes.tops?.toString(),
-            outerwear: categoryIndexes.outerwear?.toString(),
-            bottoms: categoryIndexes.bottoms?.toString(),
-            footwear: categoryIndexes.footwear?.toString(),
+            tops: getItemId('tops', categoryIndexes.tops),
+            outerwear: getItemId('outerwear', categoryIndexes.outerwear),
+            bottoms: getItemId('bottoms', categoryIndexes.bottoms),
+            footwear: getItemId('footwear', categoryIndexes.footwear),
             accessories: [],
           },
         };

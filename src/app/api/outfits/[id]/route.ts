@@ -15,7 +15,7 @@ import { updateOutfitSchema } from '@/features/outfit-builder/validations/outfit
 // ============================================================================
 
 export const GET = asyncHandler(
-  async (req: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> => {
+  async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
     // Authenticate user
     const { user, error } = await authenticate(req);
     if (error || !user) {
@@ -23,32 +23,63 @@ export const GET = asyncHandler(
     }
 
     const userId = user.userId;
-    const { id } = params;
+    const { id } = await params;
 
     // Connect to database
     await dbConnect();
     
     const outfit = await Outfit.findOne({ _id: id, userId })
       .populate({
-        path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear',
-        select: 'metadata.name metadata.category imageId',
-        populate: { path: 'imageId', select: 'thumbnailUrl dominantColor' },
-      })
-      .populate({
-        path: 'combination.items.accessories',
-        select: 'metadata.name metadata.category imageId',
-        populate: { path: 'imageId', select: 'thumbnailUrl dominantColor' },
-      })
-      .populate({
-        path: 'canvasState.items.clothItemId',
-        select: 'metadata.name metadata.category imageId',
-        populate: { path: 'imageId', select: 'thumbnailUrl dominantColor' },
+        path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear combination.items.accessories',
+        select: 'metadata imageId category',
+        populate: {
+          path: 'imageId',
+          select: 'thumbnailUrl optimizedUrl',
+        },
       })
       .select('-__v')
       .lean();
     
     if (!outfit) {
       return ApiResponseHandler.notFound('Outfit not found');
+    }
+    
+    // Manually populate canvas items if they exist  
+    try {
+      if (outfit.canvasState?.items && Array.isArray(outfit.canvasState.items) && outfit.canvasState.items.length > 0) {
+        interface CanvasItemWithId {
+          clothItemId: Types.ObjectId;
+          [key: string]: unknown;
+        }
+        
+        const clothItemIds = (outfit.canvasState.items as CanvasItemWithId[])
+          .map((item) => item.clothItemId)
+          .filter(Boolean);
+        
+        if (clothItemIds.length > 0) {
+          const populatedClothItems = await Cloth.find({ 
+            _id: { $in: clothItemIds } 
+          })
+          .populate('imageId', 'thumbnailUrl optimizedUrl')
+          .select('metadata imageId category')
+          .lean();
+          
+          // Create a map for quick lookup
+          const clothItemMap = new Map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            populatedClothItems.map((item: any) => [item._id.toString(), item])
+          );
+          
+          // Replace clothItemId with populated data
+          (outfit.canvasState.items as CanvasItemWithId[]) = (outfit.canvasState.items as CanvasItemWithId[]).map((item) => ({
+            ...item,
+            clothItemId: clothItemMap.get(item.clothItemId.toString()) || item.clothItemId,
+          } as CanvasItemWithId));
+        }
+      }
+    } catch (populateError) {
+      console.error('[GET /api/outfits/[id]] Error populating canvas items:', populateError);
+      // Continue without populated canvas items rather than failing the whole request
     }
     
     return ApiResponseHandler.success(outfit, 'Outfit retrieved successfully');
@@ -60,7 +91,7 @@ export const GET = asyncHandler(
 // ============================================================================
 
 export const PATCH = asyncHandler(
-  async (req: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> => {
+  async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
     // Authenticate user
     const { user, error } = await authenticate(req);
     if (error || !user) {
@@ -68,7 +99,7 @@ export const PATCH = asyncHandler(
     }
 
     const userId = user.userId;
-    const { id } = params;
+    const { id } = await params;
 
     // Connect to database
     await dbConnect();
@@ -135,25 +166,56 @@ export const PATCH = asyncHandler(
       { new: true, runValidators: true }
     )
       .populate({
-        path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear',
-        select: 'metadata.name metadata.category imageId',
-        populate: { path: 'imageId', select: 'thumbnailUrl dominantColor' },
-      })
-      .populate({
-        path: 'combination.items.accessories',
-        select: 'metadata.name metadata.category imageId',
-        populate: { path: 'imageId', select: 'thumbnailUrl dominantColor' },
-      })
-      .populate({
-        path: 'canvasState.items.clothItemId',
-        select: 'metadata.name metadata.category imageId',
-        populate: { path: 'imageId', select: 'thumbnailUrl dominantColor' },
+        path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear combination.items.accessories',
+        select: 'metadata imageId category',
+        populate: {
+          path: 'imageId',
+          select: 'thumbnailUrl optimizedUrl',
+        },
       })
       .select('-__v')
       .lean();
     
     if (!outfit) {
       return ApiResponseHandler.notFound('Outfit not found');
+    }
+    
+    // Manually populate canvas items if they exist
+    try {
+      if (outfit.canvasState?.items && Array.isArray(outfit.canvasState.items) && outfit.canvasState.items.length > 0) {
+        interface CanvasItemWithId {
+          clothItemId: Types.ObjectId;
+          [key: string]: unknown;
+        }
+        
+        const clothItemIds = (outfit.canvasState.items as CanvasItemWithId[])
+          .map((item) => item.clothItemId)
+          .filter(Boolean);
+        
+        if (clothItemIds.length > 0) {
+          const populatedClothItems = await Cloth.find({ 
+            _id: { $in: clothItemIds } 
+          })
+          .populate('imageId', 'thumbnailUrl optimizedUrl')
+          .select('metadata imageId category')
+          .lean();
+          
+          // Create a map for quick lookup
+          const clothItemMap = new Map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            populatedClothItems.map((item: any) => [item._id.toString(), item])
+          );
+          
+          // Replace clothItemId with populated data
+          (outfit.canvasState.items as CanvasItemWithId[]) = (outfit.canvasState.items as CanvasItemWithId[]).map((item) => ({
+            ...item,
+            clothItemId: clothItemMap.get(item.clothItemId.toString()) || item.clothItemId,
+          } as CanvasItemWithId));
+        }
+      }
+    } catch (populateError) {
+      console.error('[PATCH /api/outfits/[id]] Error populating canvas items:', populateError);
+      // Continue without populated canvas items rather than failing the whole request
     }
     
     return ApiResponseHandler.success(outfit, 'Outfit updated successfully');
@@ -165,7 +227,7 @@ export const PATCH = asyncHandler(
 // ============================================================================
 
 export const DELETE = asyncHandler(
-  async (req: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> => {
+  async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
     // Authenticate user
     const { user, error } = await authenticate(req);
     if (error || !user) {
@@ -173,7 +235,7 @@ export const DELETE = asyncHandler(
     }
 
     const userId = user.userId;
-    const { id } = params;
+    const { id } = await params;
 
     // Connect to database
     await dbConnect();

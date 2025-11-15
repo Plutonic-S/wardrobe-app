@@ -533,21 +533,39 @@ export const useOutfitBuilder = create<OutfitBuilderStore>()(
           set({ isLoading: true, error: null }, false, 'saveOutfit:start');
           
           try {
-            const { mode, configuration, categoryIndexes, canvasItems, viewport } = get();
+            const { mode, configuration, categoryIndexes, wardrobeItems, canvasItems, viewport } = get();
             
             let payload: OutfitPayload;
             
             if (mode === 'dress-me') {
+              // Group wardrobe items by category
+              const itemsByCategory = wardrobeItems.reduce((acc, item) => {
+                const category = item.category;
+                if (!acc[category]) {
+                  acc[category] = [];
+                }
+                acc[category].push(item);
+                return acc;
+              }, {} as Record<string, ClothResponse[]>);
+              
+              // Convert indexes to actual item IDs
+              const getItemId = (category: string): string | undefined => {
+                const index = categoryIndexes[category];
+                if (index === undefined) return undefined;
+                const categoryItems = itemsByCategory[category] || [];
+                return categoryItems[index]?.id;
+              };
+              
               payload = {
                 mode: 'dress-me',
                 metadata,
                 combination: {
                   configuration,
                   items: {
-                    tops: categoryIndexes.tops?.toString(),
-                    outerwear: categoryIndexes.outerwear?.toString(),
-                    bottoms: categoryIndexes.bottoms?.toString(),
-                    footwear: categoryIndexes.footwear?.toString(),
+                    tops: getItemId('tops'),
+                    outerwear: getItemId('outerwear'),
+                    bottoms: getItemId('bottoms'),
+                    footwear: getItemId('footwear'),
                     accessories: [],
                   },
                 },
@@ -571,10 +589,18 @@ export const useOutfitBuilder = create<OutfitBuilderStore>()(
             
             if (!response.ok) throw new Error('Failed to save outfit');
             
-            const result = (await response.json()) as OutfitResponse;
+            const result = await response.json();
+            console.log('[saveOutfit] Full response:', result);
+            console.log('[saveOutfit] result.data:', result.data);
+            console.log('[saveOutfit] result.data.outfit:', result.data.outfit);
             set({ isLoading: false }, false, 'saveOutfit:success');
             
-            return result.data.id;
+            // API returns { success: true, data: { outfit: { _id: '...' } } }
+            const outfitId = result.data?.outfit?._id?.toString() || result.data?.outfit?.id;
+            if (!outfitId) {
+              throw new Error('No outfit ID in response');
+            }
+            return outfitId;
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
             set({ error: errorMessage, isLoading: false }, false, 'saveOutfit:error');

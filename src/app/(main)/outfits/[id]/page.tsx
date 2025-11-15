@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Image from 'next/image';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +11,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Sparkles,
   ArrowLeft,
@@ -52,18 +63,35 @@ export default function ViewOutfitPage() {
 
   const [outfit, setOutfit] = useState<OutfitResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
+
+  // Delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Fetch outfit
   useEffect(() => {
     const fetchOutfit = async () => {
       try {
-        setIsLoading(true);
+        // Only show skeleton on initial load
+        if (!hasLoadedRef.current) {
+          setIsLoading(true);
+        }
         const response = await fetch(`/api/outfits/${outfitId}`, {
           credentials: 'include',
         });
 
         if (response.ok) {
           const data = await response.json();
+          console.log('[ViewOutfit] Full response:', data);
+          console.log('[ViewOutfit] Outfit data:', data.data);
+          console.log('[ViewOutfit] Full combination:', data.data?.combination);
+          if (data.data?.combination?.items) {
+            console.log('[ViewOutfit] Combination items:', data.data.combination.items);
+            console.log('[ViewOutfit] Items keys:', Object.keys(data.data.combination.items));
+            Object.entries(data.data.combination.items).forEach(([category, item]) => {
+              console.log(`[ViewOutfit] ${category}:`, item, 'type:', typeof item);
+            });
+          }
           setOutfit(data.data);
         } else {
           console.error('Failed to fetch outfit:', response.status);
@@ -74,6 +102,7 @@ export default function ViewOutfitPage() {
         router.push('/outfits');
       } finally {
         setIsLoading(false);
+        hasLoadedRef.current = true;
       }
     };
 
@@ -92,7 +121,9 @@ export default function ViewOutfitPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          'usage.favorite': !outfit.usage.favorite,
+          usage: {
+            favorite: !outfit.usage.favorite,
+          },
         }),
       });
 
@@ -116,8 +147,10 @@ export default function ViewOutfitPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          'usage.wearCount': outfit.usage.wearCount + 1,
-          'usage.lastWornDate': new Date().toISOString(),
+          usage: {
+            wearCount: outfit.usage.wearCount + 1,
+            lastWornDate: new Date().toISOString(),
+          },
         }),
       });
 
@@ -130,9 +163,12 @@ export default function ViewOutfitPage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!outfit) return;
-    if (!confirm('Are you sure you want to delete this outfit?')) return;
 
     try {
       const response = await fetch(`/api/outfits/${outfitId}`, {
@@ -145,6 +181,8 @@ export default function ViewOutfitPage() {
       }
     } catch (error) {
       console.error('Error deleting outfit:', error);
+    } finally {
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -215,7 +253,7 @@ export default function ViewOutfitPage() {
                   Mark as Worn
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={handleDelete}
+                  onClick={handleDeleteClick}
                   className="text-red-600"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -229,7 +267,7 @@ export default function ViewOutfitPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Left: Outfit Preview */}
           <div>
-            <div className="bg-card border border-border rounded-lg p-8 aspect-[3/4] flex items-center justify-center mb-4 relative">
+            <div className="bg-card border border-border rounded-lg p-8 aspect-[3/4] flex items-center justify-center relative">
               {/* Mode Badge */}
               <div className="absolute top-4 left-4">
                 <span
@@ -251,8 +289,8 @@ export default function ViewOutfitPage() {
               </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Quick Stats - Mobile Only */}
+            <div className="grid grid-cols-2 gap-4 mt-4 md:hidden">
               <div className="bg-card border border-border rounded-lg p-4">
                 <p className="text-sm text-muted-foreground mb-1">Times Worn</p>
                 <p className="text-2xl font-bold text-foreground">
@@ -272,6 +310,24 @@ export default function ViewOutfitPage() {
 
           {/* Right: Outfit Details */}
           <div className="space-y-6">
+            {/* Quick Stats - Desktop Only */}
+            <div className="hidden md:grid grid-cols-2 gap-4">
+              <div className="bg-card border border-border rounded-lg p-4">
+                <p className="text-sm text-muted-foreground mb-1">Times Worn</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {outfit.usage.wearCount}
+                </p>
+              </div>
+              <div className="bg-card border border-border rounded-lg p-4">
+                <p className="text-sm text-muted-foreground mb-1">Last Worn</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {outfit.usage.lastWornDate
+                    ? new Date(outfit.usage.lastWornDate).toLocaleDateString()
+                    : 'Never'}
+                </p>
+              </div>
+            </div>
+
             {/* Title */}
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -340,27 +396,66 @@ export default function ViewOutfitPage() {
                 <h3 className="text-sm font-semibold text-foreground mb-3">
                   Items ({outfit.combination.configuration})
                 </h3>
+                {Object.keys(outfit.combination.items).filter(k => outfit.combination!.items[k as keyof typeof outfit.combination.items]).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No items in this outfit</p>
+                  </div>
+                ) : (
                 <div className="space-y-3">
                   {Object.entries(outfit.combination.items).map(
-                    ([category, itemId]) => {
-                      if (!itemId || (Array.isArray(itemId) && itemId.length === 0)) {
+                    ([category, item]) => {
+                      if (!item || (Array.isArray(item) && item.length === 0)) {
                         return null;
                       }
+
+                      console.log(`[Render] ${category}:`, item, typeof item);
+
+                      // Handle populated item (object) or just ID (string)
+                      const isPopulated = typeof item === 'object' && item !== null;
+                      
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const populatedItem = item as any;
+                      
+                      // Try all possible paths for name
+                      const itemName = isPopulated 
+                        ? populatedItem.metadata?.name || populatedItem.name || 'Unknown Item' 
+                        : `Item ${item}`;
+                      
+                      // Try all possible paths for image
+                      const itemImage = isPopulated 
+                        ? populatedItem.imageId?.thumbnailUrl || 
+                          populatedItem.imageId?.optimizedUrl ||
+                          populatedItem.thumbnailUrl || 
+                          populatedItem.optimizedUrl
+                        : null;
+
+                      console.log(`[Render] ${category} - Name: ${itemName}, Image: ${itemImage}`);
 
                       return (
                         <div
                           key={category}
                           className="flex items-center gap-3 p-3 bg-muted rounded-lg"
                         >
-                          <div className="w-16 h-16 bg-background rounded-md flex items-center justify-center">
-                            <Sparkles className="h-6 w-6 text-muted-foreground" />
+                          <div className="w-20 h-20 bg-background rounded-md flex items-center justify-center overflow-hidden relative">
+                            {itemImage ? (
+                              <Image
+                                src={itemImage}
+                                alt={itemName}
+                                fill
+                                className="object-contain"
+                                unoptimized
+                              />
+                            ) : (
+                              <Sparkles className="h-8 w-8 text-muted-foreground" />
+                            )}
                           </div>
                           <div className="flex-1">
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mb-1">
                               {CATEGORY_LABELS[category] || category}
                             </p>
                             <p className="font-medium text-foreground">
-                              Item {typeof itemId === 'string' ? itemId : 'Multiple'}
+                              {itemName}
                             </p>
                           </div>
                         </div>
@@ -368,6 +463,7 @@ export default function ViewOutfitPage() {
                     }
                   )}
                 </div>
+                )}
               </div>
             )}
 
@@ -375,11 +471,78 @@ export default function ViewOutfitPage() {
             {outfit.mode === 'canvas' && outfit.canvasState && (
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-3">
-                  Canvas Items
+                  Canvas Items ({outfit.canvasState.items.length})
                 </h3>
-                <p className="text-muted-foreground">
-                  {outfit.canvasState.items.length} item(s) on canvas
-                </p>
+                {outfit.canvasState.items.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No items on canvas</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {outfit.canvasState.items.map((canvasItem, idx) => {
+                      console.log(`[Canvas] Item ${idx}:`, canvasItem);
+
+                      // Handle populated clothItemId (object) or just ID (string)
+                      const isPopulated = typeof canvasItem.clothItemId === 'object' && canvasItem.clothItemId !== null;
+                      
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const populatedItem = canvasItem.clothItemId as any;
+                      
+                      // Try all possible paths for name
+                      const itemName = isPopulated 
+                        ? populatedItem.metadata?.name || populatedItem.name || 'Unknown Item' 
+                        : `Item ${canvasItem.clothItemId}`;
+                      
+                      // Try all possible paths for image
+                      const itemImage = isPopulated 
+                        ? populatedItem.imageId?.thumbnailUrl || 
+                          populatedItem.imageId?.optimizedUrl ||
+                          populatedItem.thumbnailUrl || 
+                          populatedItem.optimizedUrl
+                        : null;
+
+                      // Get category if available
+                      const category = isPopulated ? populatedItem.category : null;
+
+                      console.log(`[Canvas] Item ${idx} - Name: ${itemName}, Image: ${itemImage}, Category: ${category}`);
+
+                      return (
+                        <div
+                          key={canvasItem.id}
+                          className="flex items-center gap-3 p-3 bg-muted rounded-lg"
+                        >
+                          <div className="w-20 h-20 bg-background rounded-md flex items-center justify-center overflow-hidden relative">
+                            {itemImage ? (
+                              <Image
+                                src={itemImage}
+                                alt={itemName}
+                                fill
+                                className="object-contain"
+                                unoptimized
+                              />
+                            ) : (
+                              <Sparkles className="h-8 w-8 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            {category && (
+                              <p className="text-xs text-muted-foreground mb-1">
+                                {CATEGORY_LABELS[category] || category}
+                              </p>
+                            )}
+                            <p className="font-medium text-foreground">
+                              {itemName}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Position: ({Math.round(canvasItem.position.x)}, {Math.round(canvasItem.position.y)})
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -395,6 +558,27 @@ export default function ViewOutfitPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Outfit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this outfit? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

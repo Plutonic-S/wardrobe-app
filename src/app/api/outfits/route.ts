@@ -63,14 +63,14 @@ export const GET = asyncHandler(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: Record<string, any> = {
       userId,
-      'metadata.status': status || 'active',
+      status: status || 'active',
     };
 
     if (mode) {
       query.mode = mode;
     }
     if (favorite === 'true') {
-      query['metadata.isFavorite'] = true;
+      query['usage.favorite'] = true;
     }
     if (tags) {
       query['metadata.tags'] = { $in: tags.split(',') };
@@ -99,11 +99,50 @@ export const GET = asyncHandler(
       .sort(sort)
       .skip(skipNum)
       .limit(limitNum)
-      .populate({ // FIX #4: Populate clothing items with correct path
-        path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear combination.items.accessories canvasState.items.clothItemId',
-        model: 'Cloth',
+      .populate({
+        path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear combination.items.accessories',
+        select: 'metadata imageId category',
+        populate: {
+          path: 'imageId',
+          select: 'thumbnailUrl optimizedUrl',
+        },
       })
       .lean();
+    
+    // Manually populate canvas items for all outfits
+    for (const outfit of outfits) {
+      if (outfit.canvasState?.items) {
+        interface CanvasItemWithId {
+          clothItemId: Types.ObjectId;
+          [key: string]: unknown;
+        }
+        
+        const clothItemIds = (outfit.canvasState.items as CanvasItemWithId[])
+          .map((item) => item.clothItemId)
+          .filter(Boolean);
+        
+        if (clothItemIds.length > 0) {
+          const populatedClothItems = await Cloth.find({ 
+            _id: { $in: clothItemIds } 
+          })
+          .populate('imageId', 'thumbnailUrl optimizedUrl')
+          .select('metadata imageId category')
+          .lean();
+          
+          // Create a map for quick lookup
+          const clothItemMap = new Map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            populatedClothItems.map((item: any) => [item._id.toString(), item])
+          );
+          
+          // Replace clothItemId with populated data
+          (outfit.canvasState.items as CanvasItemWithId[]) = (outfit.canvasState.items as CanvasItemWithId[]).map((item) => ({
+            ...item,
+            clothItemId: clothItemMap.get(item.clothItemId.toString()) || item.clothItemId,
+          } as CanvasItemWithId));
+        }
+      }
+    }
 
     // FIX #5: Get total count for pagination
     const total = await Outfit.countDocuments(query);
@@ -199,11 +238,51 @@ export const POST = asyncHandler(
     await outfit.save();
 
     // Populate clothing items for response
-    await outfit.populate({
-      path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear combination.items.accessories canvasState.items.clothItemId',
-      model: 'Cloth',
-    });
+    await outfit.populate([
+      {
+        path: 'combination.items.tops combination.items.outerwear combination.items.bottoms combination.items.footwear combination.items.accessories',
+        select: 'metadata imageId category',
+        populate: {
+          path: 'imageId',
+          select: 'thumbnailUrl optimizedUrl',
+        },
+      }
+    ]);
+    
+    // Manually populate canvas items
+    const outfitObj = outfit.toObject();
+    if (outfitObj.canvasState?.items) {
+      interface CanvasItemWithId {
+        clothItemId: Types.ObjectId;
+        [key: string]: unknown;
+      }
+      
+      const clothItemIds = (outfitObj.canvasState.items as CanvasItemWithId[])
+        .map((item) => item.clothItemId)
+        .filter(Boolean);
+      
+      if (clothItemIds.length > 0) {
+        const populatedClothItems = await Cloth.find({ 
+          _id: { $in: clothItemIds } 
+        })
+        .populate('imageId', 'thumbnailUrl optimizedUrl')
+        .select('metadata imageId category')
+        .lean();
+        
+        // Create a map for quick lookup
+        const clothItemMap = new Map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          populatedClothItems.map((item: any) => [item._id.toString(), item])
+        );
+        
+        // Replace clothItemId with populated data
+        (outfitObj.canvasState.items as CanvasItemWithId[]) = (outfitObj.canvasState.items as CanvasItemWithId[]).map((item) => ({
+          ...item,
+          clothItemId: clothItemMap.get(item.clothItemId.toString()) || item.clothItemId,
+        } as CanvasItemWithId));
+      }
+    }
 
-    return ApiResponseHandler.created({ outfit });
+    return ApiResponseHandler.created({ outfit: outfitObj });
   }
 );
