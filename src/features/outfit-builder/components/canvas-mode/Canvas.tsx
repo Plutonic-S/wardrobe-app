@@ -7,13 +7,16 @@ import { Grid3x3, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CanvasItem } from './CanvasItem';
 
-export function Canvas() {
+interface CanvasProps {
+  isSidebarOpen?: boolean;
+}
+
+export function Canvas({ isSidebarOpen = true }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const { canvasItems, addCanvasItem, viewport, setViewport } = useOutfitBuilder();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
 
   /**
    * Handle drag over - required to allow drop
@@ -125,85 +128,10 @@ export function Canvas() {
     setIsPanning(false);
   };
 
-  /**
-   * Calculate distance between two touch points
-   */
-  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-
-  /**
-   * Handle touch start - for pinch and pan on mobile
-   */
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2) {
-      // Pinch gesture
-      const distance = getTouchDistance(e.touches[0], e.touches[1]);
-      setLastTouchDistance(distance);
-    } else if (e.touches.length === 1) {
-      // Pan gesture
-      const touch = e.touches[0];
-      setIsPanning(true);
-      setPanStart({
-        x: touch.clientX - viewport.pan.x,
-        y: touch.clientY - viewport.pan.y,
-      });
-    }
-  };
-
-  /**
-   * Handle touch move - for pinch zoom and pan
-   */
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2 && lastTouchDistance !== null) {
-      // Pinch zoom
-      e.preventDefault();
-      const distance = getTouchDistance(e.touches[0], e.touches[1]);
-      const scale = distance / lastTouchDistance;
-      const newZoom = Math.max(0.2, Math.min(3, viewport.zoom * scale));
-
-      setViewport({ zoom: newZoom });
-      setLastTouchDistance(distance);
-    } else if (e.touches.length === 1 && isPanning) {
-      // Pan
-      e.preventDefault();
-      const touch = e.touches[0];
-      setViewport({
-        pan: {
-          x: touch.clientX - panStart.x,
-          y: touch.clientY - panStart.y,
-        },
-      });
-    }
-  };
-
-  /**
-   * Handle touch end
-   */
-  const handleTouchEnd = () => {
-    setIsPanning(false);
-    setLastTouchDistance(null);
-  };
-
-  /**
-   * Handle mouse wheel - for zoom
-   */
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-
-    // Determine zoom direction and amount
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const newZoom = Math.max(0.2, Math.min(3, viewport.zoom + delta));
-
-    setViewport({ zoom: newZoom });
-  };
-
   return (
     <div className="relative h-full w-full bg-background">
-      {/* Canvas Controls */}
-      <div className="absolute top-4 right-4 z-10 flex gap-2 items-center">
+      {/* Canvas Controls - Hidden on small/medium when sidebar is open */}
+      <div className={`absolute top-4 right-4 z-20 flex gap-2 items-center transition-opacity ${isSidebarOpen ? 'opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto' : 'opacity-100'}`}>
         <div className="text-sm font-medium bg-background/90 px-3 py-1.5 rounded border border-border">
           {Math.round(viewport.zoom * 100)}%
         </div>
@@ -229,10 +157,6 @@ export function Canvas() {
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
         onMouseLeave={handleCanvasMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onWheel={handleWheel}
         className={`
           h-full w-full relative overflow-hidden
           transition-colors duration-200
@@ -245,18 +169,17 @@ export function Canvas() {
             linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)
           `,
           backgroundSize: `${20 * viewport.zoom}px ${20 * viewport.zoom}px`,
-          touchAction: 'none', // Prevent default touch behaviors
         }}
       >
         {/* Canvas Content Wrapper with zoom transform */}
         <div
           style={{
-            transform: `translate(${viewport.pan.x}px, ${viewport.pan.y}px) scale(${viewport.zoom})`,
-            transformOrigin: '0 0',
+            transform: `scale(${viewport.zoom}) translate(${viewport.pan.x}px, ${viewport.pan.y}px)`,
+            transformOrigin: 'top left',
             width: '100%',
             height: '100%',
             position: 'relative',
-            transition: isPanning ? 'none' : 'transform 0.2s ease-out',
+            transition: 'transform 0.2s ease-out',
           }}
         >
         {/* Empty State */}

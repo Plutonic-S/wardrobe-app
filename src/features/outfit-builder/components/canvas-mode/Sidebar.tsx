@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { ClothResponse, ClothCategory } from '@/features/wardrobe/types/wardrobe.types';
 import { Accordion } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -19,11 +19,15 @@ const ALL_CATEGORIES: ClothCategory[] = [
   'accessories',
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const { wardrobeItems, setWardrobeItems } = useOutfitBuilder();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<ClothCategory[]>([]);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch wardrobe items on mount
@@ -123,34 +127,37 @@ export function Sidebar() {
     );
   };
 
-  // Close mobile sidebar on item drag start
+  // Close sidebar on item drag start (mobile only)
   const handleItemDragStart = (itemId: string) => {
-    setIsMobileOpen(false);
+    // On mobile, close sidebar when dragging starts
+    if (window.innerWidth < 768) {
+      onToggle();
+    }
     console.log('[Sidebar] Item drag started:', itemId);
   };
 
   const sidebarContent = (
     <>
-      {/* Header with search */}
-      <div className="sticky top-0 z-10 bg-card border-b p-4 space-y-4">
+      {/* Header with search and toggle button */}
+      <div className="flex-shrink-0 bg-card border-b p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Wardrobe</h2>
-          {/* Mobile close button */}
+          {/* Toggle button - top right */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsMobileOpen(false)}
-            className="md:hidden h-8 w-8"
-            aria-label="Close sidebar"
+            onClick={onToggle}
+            className="h-8 w-8"
+            aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
           >
-            <X className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5" />
           </Button>
         </div>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
       </div>
 
       {/* Filters */}
-      <div className="p-4 border-b">
+      <div className="flex-shrink-0 p-4 border-b">
         <QuickFilters
           selectedCategories={selectedCategories}
           onToggle={handleCategoryToggle}
@@ -159,7 +166,7 @@ export function Sidebar() {
       </div>
 
       {/* Scrollable category sections */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">
             <p className="text-sm">Loading wardrobe items...</p>
@@ -189,36 +196,16 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile hamburger button */}
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-40 h-10 w-10 shadow-lg"
-        aria-label="Open sidebar"
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
-
-      {/* Mobile overlay */}
-      {isMobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:relative top-0 left-0 h-full
-          w-full md:w-full
+          h-full
           bg-card
           flex flex-col
-          z-50 md:z-0
-          transition-transform duration-300
+          transition-all duration-300 ease-in-out
           overflow-hidden
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          border-r
+          ${isOpen ? 'w-full md:w-[450px]' : 'w-0'}
         `}
       >
         {sidebarContent}

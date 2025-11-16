@@ -58,7 +58,7 @@ export function QuickFilters({
       </div>
 
       {/* Category Grid */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-2 gap-2">
         {CATEGORIES.map((category) => {
           const Icon = category.icon;
           const isSelected = selectedCategories.includes(category.value);
@@ -86,10 +86,10 @@ export function QuickFilters({
               />
               <Label
                 htmlFor={category.value}
-                className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+                className="flex items-center gap-2 cursor-pointer flex-1 min-w-0 sm:justify-start justify-center"
               >
                 <Icon className="h-4 w-4 flex-shrink-0" />
-                <span className="text-sm font-medium truncate">{category.label}</span>
+                <span className="text-sm font-medium truncate hidden sm:inline">{category.label}</span>
               </Label>
               <Badge
                 variant="secondary"

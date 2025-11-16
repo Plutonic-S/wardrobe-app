@@ -1,66 +1,44 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Canvas } from './Canvas';
+import { Button } from '@/components/ui/button';
 
 /**
  * Canvas Mode Component
  * Allows users to drag wardrobe items onto a canvas and position them freely
+ * Sidebar: 450px width on desktop, full-width on mobile, toggleable
  */
 export function CanvasMode() {
-  const [sidebarWidth, setSidebarWidth] = useState(320); // Default 320px
-  const [isResizing, setIsResizing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsResizing(true);
-    e.preventDefault();
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
-  React.useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing) {
-        const newWidth = Math.max(250, Math.min(600, e.clientX));
-        setSidebarWidth(newWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
-
   return (
-    <div className="flex h-full w-full">
-      {/* Sidebar - Resizable, shows wardrobe items */}
-      <div className="relative" style={{ width: `${sidebarWidth}px` }}>
-        <Sidebar />
+    <div className="flex w-full relative h-[600px] lg:h-[800px]">
+      {/* Sidebar - Fixed 450px on desktop, full-width on mobile */}
+      <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
-        {/* Resize Handle */}
-        <div
-          onMouseDown={handleMouseDown}
-          className={`
-            absolute top-0 right-0 w-1 h-full cursor-col-resize
-            bg-border hover:bg-primary transition-colors
-            ${isResizing ? 'bg-primary' : ''}
-          `}
-          style={{ zIndex: 100 }}
-        />
-      </div>
+      {/* Toggle button - Shows when sidebar is closed */}
+      {!isSidebarOpen && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleSidebar}
+          className="absolute top-4 left-4 z-30 h-10 w-10 shadow-lg"
+          aria-label="Open sidebar"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+      )}
 
       {/* Canvas - Main area, drop zone for items */}
-      <div className="flex-1 relative border-l-2 border-border">
-        <Canvas />
+      <div className="flex-1 relative">
+        <Canvas isSidebarOpen={isSidebarOpen} />
       </div>
     </div>
   );

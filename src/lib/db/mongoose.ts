@@ -29,7 +29,7 @@ export default async function dbConnect(): Promise<Mongoose> {
 
     cached.promise = mongoose
       .connect(uri as string, { bufferCommands: false })
-      .then((m) => {
+      .then(async (m) => {
         // Set up connection event handlers
         m.connection.on("connected", () => {
           logger.db("Connected successfully");
@@ -54,7 +54,24 @@ export default async function dbConnect(): Promise<Mongoose> {
           database: m.connection.name,
           host: m.connection.host 
         });
-        
+
+        // Eagerly import model files so they register themselves with
+        // mongoose before the application executes queries that rely on
+        // those models (eg. populate('imageId') -> 'Image'). Using dynamic
+        // imports here keeps the codebase ES module friendly and satisfies
+        // linting rules.
+        try {
+          // dynamic imports return promises; await them to ensure models are
+          // registered before returning the connected mongoose instance.
+          await import('./models/Image');
+          await import('./models/Cloth');
+          await import('./models/Outfit');
+          await import('./models/User');
+          logger.db('Registered mongoose models: Image, Cloth, Outfit, User');
+        } catch (err) {
+          logger.error('Failed to register mongoose models', err);
+        }
+
         return m;
       })
       .catch((err) => {

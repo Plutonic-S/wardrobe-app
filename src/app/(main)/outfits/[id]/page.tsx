@@ -485,20 +485,20 @@ export default function ViewOutfitPage() {
 
                       // Handle populated clothItemId (object) or just ID (string)
                       const isPopulated = typeof canvasItem.clothItemId === 'object' && canvasItem.clothItemId !== null;
-                      
+
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       const populatedItem = canvasItem.clothItemId as any;
-                      
+
                       // Try all possible paths for name
-                      const itemName = isPopulated 
-                        ? populatedItem.metadata?.name || populatedItem.name || 'Unknown Item' 
+                      const itemName = isPopulated
+                        ? populatedItem.metadata?.name || populatedItem.name || 'Unknown Item'
                         : `Item ${canvasItem.clothItemId}`;
-                      
+
                       // Try all possible paths for image
-                      const itemImage = isPopulated 
-                        ? populatedItem.imageId?.thumbnailUrl || 
+                      const itemImage = isPopulated
+                        ? populatedItem.imageId?.thumbnailUrl ||
                           populatedItem.imageId?.optimizedUrl ||
-                          populatedItem.thumbnailUrl || 
+                          populatedItem.thumbnailUrl ||
                           populatedItem.optimizedUrl
                         : null;
 
@@ -509,7 +509,7 @@ export default function ViewOutfitPage() {
 
                       return (
                         <div
-                          key={canvasItem.id}
+                          key={canvasItem.id || `canvas-item-${idx}`}
                           className="flex items-center gap-3 p-3 bg-muted rounded-lg"
                         >
                           <div className="w-20 h-20 bg-background rounded-md flex items-center justify-center overflow-hidden relative">
