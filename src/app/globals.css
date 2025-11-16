@@ -136,3 +136,201 @@
     animation: shimmer 2s infinite linear;
   }
 }
+
+/* Calendar styles for outfit calendar feature */
+@layer components {
+  /* Base calendar styles - Force full width and light mode colors */
+  .outfit-calendar,
+  .outfit-calendar-mobile {
+    width: 100% !important;
+    display: block;
+    /* Force light mode colors */
+    --calendar-bg: oklch(1 0 0);
+    --calendar-text: oklch(0.145 0 0);
+    --calendar-border: oklch(0.922 0 0);
+    --calendar-muted: oklch(0.95 0 0);
+    --calendar-muted-text: oklch(0.556 0 0);
+    --calendar-accent: oklch(0.97 0 0);
+    --calendar-primary: oklch(0.205 0 0);
+  }
+
+  /* Override react-calendar default styles - Force full width at every level */
+  .outfit-calendar .react-calendar,
+  .outfit-calendar-mobile .react-calendar {
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none;
+    font-family: var(--font-sans);
+    background: var(--calendar-bg);
+    color: var(--calendar-text);
+  }
+
+  /* Ensure all containers take full width */
+  .outfit-calendar .react-calendar__viewContainer,
+  .outfit-calendar-mobile .react-calendar__viewContainer,
+  .outfit-calendar .react-calendar__month-view,
+  .outfit-calendar-mobile .react-calendar__month-view,
+  .outfit-calendar .react-calendar__month-view > div,
+  .outfit-calendar-mobile .react-calendar__month-view > div,
+  .outfit-calendar .react-calendar__month-view__weekdays,
+  .outfit-calendar-mobile .react-calendar__month-view__weekdays,
+  .outfit-calendar .react-calendar__month-view__days,
+  .outfit-calendar-mobile .react-calendar__month-view__days {
+    width: 100% !important;
+    display: flex;
+  }
+
+  /* Navigation */
+  .outfit-calendar .react-calendar__navigation,
+  .outfit-calendar-mobile .react-calendar__navigation {
+    @apply mb-4;
+    display: flex;
+    width: 100%;
+  }
+
+  .outfit-calendar .react-calendar__navigation button,
+  .outfit-calendar-mobile .react-calendar__navigation button {
+    background: transparent;
+    color: var(--calendar-text);
+    min-width: 44px;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  .outfit-calendar .react-calendar__navigation button:enabled:hover,
+  .outfit-calendar .react-calendar__navigation button:enabled:focus,
+  .outfit-calendar-mobile .react-calendar__navigation button:enabled:hover,
+  .outfit-calendar-mobile .react-calendar__navigation button:enabled:focus {
+    background: var(--calendar-accent);
+  }
+
+  .outfit-calendar .react-calendar__navigation button[disabled],
+  .outfit-calendar-mobile .react-calendar__navigation button[disabled] {
+    background: transparent;
+    opacity: 0.5;
+  }
+
+  /* Weekday headers */
+  .outfit-calendar .react-calendar__month-view__weekdays,
+  .outfit-calendar-mobile .react-calendar__month-view__weekdays {
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+
+  .outfit-calendar .react-calendar__month-view__weekdays__weekday,
+  .outfit-calendar-mobile .react-calendar__month-view__weekdays__weekday {
+    text-align: center;
+    padding: 0.5rem;
+    flex: 1;
+  }
+
+  .outfit-calendar .react-calendar__month-view__weekdays__weekday abbr,
+  .outfit-calendar-mobile .react-calendar__month-view__weekdays__weekday abbr {
+    text-decoration: none;
+    color: var(--calendar-muted-text);
+    font-weight: 700;
+  }
+
+  /* Days grid - ensure it stretches */
+  .outfit-calendar .react-calendar__month-view__days,
+  .outfit-calendar-mobile .react-calendar__month-view__days {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 2px;
+  }
+
+  /* Tiles - day numbers */
+  .outfit-calendar .react-calendar__tile,
+  .outfit-calendar-mobile .react-calendar__tile {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    font-weight: 600;
+    color: var(--calendar-text);
+    background: transparent;
+  }
+
+  /* Ensure button text inside tiles is also visible */
+  .outfit-calendar .react-calendar__tile abbr,
+  .outfit-calendar-mobile .react-calendar__tile abbr {
+    color: var(--calendar-text);
+    font-weight: 600;
+  }
+
+  /* Desktop tiles */
+  .outfit-calendar .react-calendar__tile {
+    position: relative;
+    min-height: 80px;
+    padding: 0.5rem;
+  }
+
+  /* Mobile tiles */
+  .outfit-calendar-mobile .react-calendar__tile {
+    position: relative;
+    min-height: 50px;
+    padding: 0.25rem;
+    font-size: 0.875rem;
+  }
+
+  .outfit-calendar-mobile .react-calendar__navigation button {
+    font-size: 0.875rem;
+  }
+
+  /* Tile states */
+  .outfit-calendar .react-calendar__tile:enabled:hover,
+  .outfit-calendar .react-calendar__tile:enabled:focus,
+  .outfit-calendar-mobile .react-calendar__tile:enabled:hover,
+  .outfit-calendar-mobile .react-calendar__tile:enabled:focus {
+    cursor: pointer;
+    background: var(--calendar-accent);
+  }
+
+  .outfit-calendar .react-calendar__tile--active,
+  .outfit-calendar-mobile .react-calendar__tile--active {
+    background: var(--calendar-muted);
+    color: var(--calendar-text);
+  }
+
+  .outfit-calendar .react-calendar__tile--active:hover,
+  .outfit-calendar-mobile .react-calendar__tile--active:hover {
+    background: var(--calendar-accent);
+  }
+
+  .outfit-calendar .react-calendar__tile--now,
+  .outfit-calendar-mobile .react-calendar__tile--now {
+    border: 2px solid var(--calendar-primary);
+    background: oklch(0.97 0 0);
+    color: var(--calendar-text);
+  }
+
+  .outfit-calendar .react-calendar__tile.has-assignment,
+  .outfit-calendar-mobile .react-calendar__tile.has-assignment {
+    background: var(--calendar-muted);
+  }
+
+  /* Neighboring months - more subtle but still readable */
+  .outfit-calendar .react-calendar__month-view__days__day--neighboringMonth,
+  .outfit-calendar-mobile .react-calendar__month-view__days__day--neighboringMonth {
+    color: var(--calendar-muted-text);
+    opacity: 0.5;
+  }
+
+  /* Past dates - make them unclickable and visually distinct */
+  .outfit-calendar .react-calendar__tile.past-date,
+  .outfit-calendar-mobile .react-calendar__tile.past-date {
+    color: var(--calendar-muted-text);
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .outfit-calendar .react-calendar__tile.past-date:enabled:hover,
+  .outfit-calendar .react-calendar__tile.past-date:enabled:focus,
+  .outfit-calendar-mobile .react-calendar__tile.past-date:enabled:hover,
+  .outfit-calendar-mobile .react-calendar__tile.past-date:enabled:focus {
+    background: transparent;
+  }
+}
