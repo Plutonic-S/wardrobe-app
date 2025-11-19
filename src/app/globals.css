@@ -334,3 +334,44 @@
     background: transparent;
   }
 }
+
+/* ============================================================================
+   OUTFIT SNAPSHOT CONTAINER - html2canvas Compatibility
+   ============================================================================
+   Override modern CSS color functions (oklch, lab, etc.) with hex colors
+   for html2canvas compatibility when generating outfit snapshots
+   ========================================================================= */
+
+.outfit-snapshot-container,
+.outfit-snapshot-container * {
+  /* Force simple color formats that html2canvas understands */
+  --background: #ffffff !important;
+  --foreground: #000000 !important;
+  --card: #ffffff !important;
+  --card-foreground: #000000 !important;
+  --popover: #ffffff !important;
+  --popover-foreground: #000000 !important;
+  --primary: #1a1a1a !important;
+  --primary-foreground: #fafafa !important;
+  --secondary: #f5f5f5 !important;
+  --secondary-foreground: #1a1a1a !important;
+  --muted: #f5f5f5 !important;
+  --muted-foreground: #737373 !important;
+  --accent: #f5f5f5 !important;
+  --accent-foreground: #1a1a1a !important;
+  --destructive: #ef4444 !important;
+  --border: #e5e5e5 !important;
+  --input: #e5e5e5 !important;
+  --ring: #a3a3a3 !important;
+  
+  /* Reset to simple colors */
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+.outfit-snapshot-container img {
+  /* Ensure images render properly */
+  max-width: 100%;
+  height: auto;
+  display: block;
+}

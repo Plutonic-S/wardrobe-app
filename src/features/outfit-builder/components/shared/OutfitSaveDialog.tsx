@@ -25,6 +25,10 @@ interface OutfitSaveDialogProps {
   title?: string;
   description?: string;
   saveButtonText?: string;
+  saveProgress?: {
+    stage: 'idle' | 'generating' | 'uploading' | 'saving';
+    progress: number;
+  };
 }
 
 export function OutfitSaveDialog({
@@ -37,7 +41,23 @@ export function OutfitSaveDialog({
   title = 'Save Outfit',
   description = 'Give your outfit a name and add some details',
   saveButtonText = 'Save',
+  saveProgress,
 }: OutfitSaveDialogProps) {
+  // Get progress message based on stage
+  const getProgressMessage = () => {
+    if (!saveProgress) return 'Saving...';
+
+    switch (saveProgress.stage) {
+      case 'generating':
+        return 'Generating preview image...';
+      case 'uploading':
+        return 'Uploading snapshot...';
+      case 'saving':
+        return 'Saving outfit...';
+      default:
+        return 'Saving...';
+    }
+  };
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -143,7 +163,7 @@ export function OutfitSaveDialog({
                     className="flex items-center gap-2"
                   >
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Saving...</span>
+                    <span>{getProgressMessage()}</span>
                   </motion.div>
                 ) : (
                   <motion.span

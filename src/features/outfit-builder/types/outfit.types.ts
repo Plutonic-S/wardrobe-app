@@ -113,6 +113,49 @@ export interface OutfitSocial {
 }
 
 /**
+ * Preview Image (Phase 3.1 - Snapshots)
+ */
+export interface PreviewImage {
+  url: string;           // Public URL or Cloudinary URL
+  publicId: string;      // For deletion/updates
+  width: number;         // 1000
+  height: number;        // 1000
+  generatedAt: Date;     // Timestamp
+  checksum?: string;     // Hash of render data to detect changes
+}
+
+/**
+ * Composition data (Phase 3.1 - Reconstruction)
+ */
+export interface CompositionData {
+  layout: 'vertical-stack' | 'side-by-side' | 'canvas-free';
+  dressMe?: {
+    slotPositions: Record<string, {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      zIndex: number;
+    }>;
+  };
+  canvas?: {
+    items: Array<{
+      itemId: string;
+      position: { x: number; y: number };
+      size: { width: number; height: number };
+      rotation: number;
+      zIndex: number;
+    }>;
+    viewport: { zoom: number; pan: { x: number; y: number } };
+  };
+  renderOptions?: {
+    backgroundColor?: string;
+    showBorders?: boolean;
+    padding?: number;
+  };
+}
+
+/**
  * Complete outfit document (from database)
  */
 export interface OutfitDocument {
@@ -133,6 +176,12 @@ export interface OutfitDocument {
   
   // Canvas data
   canvasState?: CanvasState;
+  
+  // Preview Image (Phase 3.1)
+  previewImage?: PreviewImage;
+  
+  // Composition (Phase 3.1)
+  composition?: CompositionData;
   
   // Usage
   usage: OutfitUsage;

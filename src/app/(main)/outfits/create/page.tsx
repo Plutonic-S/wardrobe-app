@@ -14,6 +14,12 @@ import {
   CanvasMode,
   OutfitSaveDialog,
 } from '@/features/outfit-builder/components';
+import { generateOutfitSnapshot } from '@/features/outfit-builder/services/outfit-snapshot.service';
+import type {
+  DressMeRenderData,
+  CanvasRenderData,
+} from '@/features/outfit-builder/components/shared/OutfitRenderer';
+import { toast } from 'sonner';
 
 export default function CreateOutfitPage() {
   const router = useRouter();
@@ -37,8 +43,6 @@ export default function CreateOutfitPage() {
     toggleCategoryLock,
     shuffleUnlocked,
     canvasItems,
-    saveOutfit,
-    isLoading: isSaving,
   } = useOutfitBuilder();
 
   // Local state
@@ -51,6 +55,10 @@ export default function CreateOutfitPage() {
     tags: [],
     season: [],
   });
+  const [saveProgress, setSaveProgress] = useState<{
+    stage: 'idle' | 'generating' | 'uploading' | 'saving';
+    progress: number;
+  }>({ stage: 'idle', progress: 0 });
 
   // Fetch wardrobe items
   useEffect(() => {
@@ -121,19 +129,24 @@ export default function CreateOutfitPage() {
     return acc;
   }, {} as Record<string, ClothResponse[]>);
 
-  // Handle save
+  // Handle save with snapshot generation
   const handleSave = async () => {
     try {
       console.log('[handleSave] Mode:', mode);
       console.log('[handleSave] CategoryIndexes:', categoryIndexes);
       console.log('[handleSave] CanvasItems:', canvasItems);
-      
-      // Validate that we have at least one item in dress-me mode
+
+      // Reset progress
+      setSaveProgress({ stage: 'idle', progress: 0 });
+
+      // =========================================================================
+      // STEP 1: VALIDATE ITEMS
+      // =========================================================================
+
       if (mode === 'dress-me') {
         const categories = getCategories();
         console.log('[handleSave] Categories for config:', categories);
-        
-        // Check if we have valid indexes for the current configuration
+
         const hasValidItems = categories.some(cat => {
           const index = categoryIndexes[cat];
           const items = itemsByCategory[cat] || [];
@@ -141,20 +154,111 @@ export default function CreateOutfitPage() {
           console.log(`[handleSave] ${cat}: index=${index}, hasItems=${items.length}, valid=${hasItem}`);
           return hasItem;
         });
-        
+
         if (!hasValidItems) {
-          alert('Please select at least one clothing item before saving');
+          toast.error('No items selected', {
+            description: 'Please select at least one clothing item before saving',
+          });
           return;
         }
       }
 
-      // Validate that we have items on canvas in canvas mode
       if (mode === 'canvas') {
         if (canvasItems.length === 0) {
-          alert('Please add at least one item to the canvas before saving');
+          toast.error('No items on canvas', {
+            description: 'Please add at least one item to the canvas before saving',
+          });
           return;
         }
       }
+
+      // =========================================================================
+      // STEP 2: BUILD RENDER DATA
+      // =========================================================================
+
+      let renderData: DressMeRenderData | CanvasRenderData;
+      const tempOutfitId = `temp_${Date.now()}`;
+
+      if (mode === 'dress-me') {
+        // Get current items based on category indexes
+        const getCurrentItem = (category: string): ClothResponse | undefined => {
+          const index = categoryIndexes[category];
+          if (index === undefined) return undefined;
+          const categoryItems = itemsByCategory[category] || [];
+          return categoryItems[index];
+        };
+
+        renderData = {
+          configuration,
+          items: {
+            tops: getCurrentItem('tops'),
+            outerwear: getCurrentItem('outerwear'),
+            bottoms: getCurrentItem('bottoms'),
+            dresses: getCurrentItem('dresses'),
+            footwear: getCurrentItem('footwear'),
+            accessories: [], // TODO: Add accessories support
+          },
+        } as DressMeRenderData;
+      } else {
+        // Canvas mode
+        renderData = {
+          items: canvasItems,
+          wardrobeItems,
+          viewport: { zoom: 1, pan: { x: 0, y: 0 } },
+        } as CanvasRenderData;
+      }
+
+      // =========================================================================
+      // STEP 3: GENERATE SNAPSHOT
+      // =========================================================================
+
+      setSaveProgress({ stage: 'generating', progress: 0 });
+      console.log('[handleSave] Generating snapshot...');
+      console.log('[handleSave] Render data:', mode === 'dress-me' ? {
+        configuration: (renderData as DressMeRenderData).configuration,
+        items: Object.entries((renderData as DressMeRenderData).items).map(([key, item]) => ({
+          category: key,
+          hasItem: !!item,
+          id: Array.isArray(item) ? `[${item.length} items]` : (item as ClothResponse | undefined)?.id
+        }))
+      } : {
+        itemCount: (renderData as CanvasRenderData).items.length
+      });
+
+      let snapshotResult;
+      try {
+        // Note: html2canvas color warnings are suppressed in the snapshot service
+        snapshotResult = await generateOutfitSnapshot(
+          tempOutfitId,
+          mode,
+          renderData,
+          {
+            onProgress: (progress) => {
+              console.log('[handleSave] Snapshot progress:', progress);
+              setSaveProgress({ stage: 'generating', progress });
+            },
+          }
+        );
+
+        console.log('[handleSave] Snapshot generated successfully:', {
+          url: snapshotResult.url,
+          publicId: snapshotResult.publicId,
+          hasComposition: !!snapshotResult.composition,
+          checksum: snapshotResult.checksum
+        });
+      } catch (snapshotError) {
+        console.error('[handleSave] Snapshot generation FAILED:', snapshotError);
+        toast.error('Failed to generate outfit preview', {
+          description: snapshotError instanceof Error ? snapshotError.message : 'Unknown error',
+        });
+        throw snapshotError;
+      }
+
+      // =========================================================================
+      // STEP 4: PREPARE OUTFIT DATA WITH SNAPSHOT
+      // =========================================================================
+
+      setSaveProgress({ stage: 'saving', progress: 90 });
 
       const metadata: OutfitMetadata = {
         name: outfitMetadata.name || 'Untitled Outfit',
@@ -163,12 +267,100 @@ export default function CreateOutfitPage() {
         season: outfitMetadata.season || [],
       };
 
-      console.log('[handleSave] Saving with metadata:', metadata);
-      const outfitId = await saveOutfit(metadata);
-      console.log('[handleSave] Saved outfit ID:', outfitId);
-      router.push(`/outfits/${outfitId}`);
+      // Build payload with snapshot and composition
+      const basePayload = {
+        mode,
+        metadata,
+        previewImage: {
+          url: snapshotResult.url,
+          publicId: snapshotResult.publicId,
+          width: 1000,
+          height: 1000,
+          generatedAt: new Date().toISOString(),
+        },
+        composition: snapshotResult.composition,
+      };
+
+      // Add mode-specific data
+      let payload;
+      if (mode === 'dress-me') {
+        const getItemId = (category: string): string | undefined => {
+          const index = categoryIndexes[category];
+          if (index === undefined) return undefined;
+          const categoryItems = itemsByCategory[category] || [];
+          return categoryItems[index]?.id;
+        };
+
+        payload = {
+          ...basePayload,
+          combination: {
+            configuration,
+            items: {
+              tops: getItemId('tops'),
+              outerwear: getItemId('outerwear'),
+              bottoms: getItemId('bottoms'),
+              footwear: getItemId('footwear'),
+              accessories: [],
+            },
+          },
+        };
+      } else {
+        payload = {
+          ...basePayload,
+          canvasState: {
+            items: canvasItems,
+            viewport: { zoom: 1, pan: { x: 0, y: 0 } },
+          },
+        };
+      }
+
+      // =========================================================================
+      // STEP 5: POST OUTFIT TO API
+      // =========================================================================
+
+      console.log('[handleSave] Posting outfit with payload:', payload);
+
+      const response = await fetch('/api/outfits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || 'Failed to save outfit');
+      }
+
+      const result = await response.json();
+      const outfitId = result.data?.outfit?._id?.toString() || result.data?.outfit?.id;
+
+      if (!outfitId) {
+        throw new Error('No outfit ID in response');
+      }
+
+      // =========================================================================
+      // STEP 6: SUCCESS
+      // =========================================================================
+
+      setSaveProgress({ stage: 'idle', progress: 100 });
+      console.log('[handleSave] Outfit saved successfully:', outfitId);
+
+      toast.success('Outfit saved!', {
+        description: 'Your outfit has been saved with a preview image.',
+      });
+
+      // Close dialog and navigate
+      setIsSaveDialogOpen(false);
+      router.push(`/outfits`);
+
     } catch (error) {
-      console.error('Error saving outfit:', error);
+      console.error('[handleSave] Error:', error);
+      setSaveProgress({ stage: 'idle', progress: 0 });
+
+      toast.error('Failed to save outfit', {
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+      });
     }
   };
 
@@ -217,7 +409,7 @@ export default function CreateOutfitPage() {
             <Button
               onClick={() => setIsSaveDialogOpen(true)}
               className="bg-purple-600 hover:bg-purple-700 flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
-              disabled={isSaving}
+              disabled={saveProgress.stage !== 'idle'}
             >
               <Save className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Save Outfit</span>
@@ -255,7 +447,8 @@ export default function CreateOutfitPage() {
         onSave={handleSave}
         metadata={outfitMetadata}
         onMetadataChange={setOutfitMetadata}
-        isSaving={isSaving}
+        isSaving={saveProgress.stage !== 'idle'}
+        saveProgress={saveProgress}
       />
     </div>
   );

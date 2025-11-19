@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { Button } from '@/components/ui/button';
 import {
@@ -310,10 +311,20 @@ export default function OutfitsGalleryPage() {
                     />
                   </button>
 
-                  {/* Placeholder for outfit preview */}
-                  <div className="text-muted-foreground">
-                    <Sparkles className="h-12 w-12" />
-                  </div>
+                  {/* Outfit Preview */}
+                  {outfit.previewImage?.url ? (
+                    <Image
+                      src={outfit.previewImage.url}
+                      alt={outfit.metadata.name}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="text-muted-foreground">
+                      <Sparkles className="h-12 w-12" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Outfit Info */}

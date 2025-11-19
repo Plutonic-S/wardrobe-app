@@ -47,6 +47,44 @@ export interface IOutfitDocument extends Document {
     viewport: { zoom: number; pan: { x: number; y: number } };
   };
   
+  // Preview Image subdocument (Phase 3.1 - Snapshots)
+  previewImage?: {
+    url: string;           // Cloudinary URL
+    publicId: string;      // For deletion/updates
+    width: number;         // 1000
+    height: number;        // 1000
+    generatedAt: Date;     // Timestamp
+  };
+  
+  // Composition subdocument (Phase 3.1 - Reconstruction)
+  composition?: {
+    layout: 'vertical-stack' | 'side-by-side' | 'canvas-free';
+    dressMe?: {
+      slotPositions: Map<string, {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        zIndex: number;
+      }>;
+    };
+    canvas?: {
+      items: Array<{
+        itemId: string;
+        position: { x: number; y: number };
+        size: { width: number; height: number };
+        rotation: number;
+        zIndex: number;
+      }>;
+      viewport: { zoom: number; pan: { x: number; y: number } };
+    };
+    renderOptions?: {
+      backgroundColor?: string;
+      showBorders?: boolean;
+      padding?: number;
+    };
+  };
+  
   // Usage tracking subdocument
   usage: {
     lastWornDate?: Date;
@@ -207,6 +245,78 @@ const socialSchema = new Schema(
   { _id: false }
 );
 
+/**
+ * Preview Image subdocument schema (Phase 3.1)
+ */
+const previewImageSchema = new Schema(
+  {
+    url: { type: String, required: true },
+    publicId: { type: String, required: true },
+    width: { type: Number, default: 1000 },
+    height: { type: Number, default: 1000 },
+    generatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+/**
+ * Composition subdocument schema (Phase 3.1)
+ */
+const compositionSchema = new Schema(
+  {
+    layout: {
+      type: String,
+      enum: ['vertical-stack', 'side-by-side', 'canvas-free'],
+      required: true,
+    },
+    dressMe: {
+      slotPositions: {
+        type: Map,
+        of: new Schema(
+          {
+            x: { type: Number, required: true },
+            y: { type: Number, required: true },
+            width: { type: Number, required: true },
+            height: { type: Number, required: true },
+            zIndex: { type: Number, default: 0 },
+          },
+          { _id: false }
+        ),
+      },
+    },
+    canvas: {
+      items: [
+        {
+          itemId: { type: String, required: true },
+          position: {
+            x: { type: Number, required: true },
+            y: { type: Number, required: true },
+          },
+          size: {
+            width: { type: Number, required: true },
+            height: { type: Number, required: true },
+          },
+          rotation: { type: Number, default: 0 },
+          zIndex: { type: Number, default: 0 },
+        },
+      ],
+      viewport: {
+        zoom: { type: Number, default: 1 },
+        pan: {
+          x: { type: Number, default: 0 },
+          y: { type: Number, default: 0 },
+        },
+      },
+    },
+    renderOptions: {
+      backgroundColor: { type: String, default: 'transparent' },
+      showBorders: { type: Boolean, default: false },
+      padding: { type: Number, default: 20 },
+    },
+  },
+  { _id: false }
+);
+
 // ============================================================================
 // MAIN SCHEMA
 // ============================================================================
@@ -233,6 +343,12 @@ const outfitSchema = new Schema<IOutfitDocument>(
     },
     canvasState: {
       type: canvasStateSchema,
+    },
+    previewImage: {
+      type: previewImageSchema,
+    },
+    composition: {
+      type: compositionSchema,
     },
     usage: {
       type: usageSchema,

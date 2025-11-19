@@ -192,7 +192,7 @@ export const POST = asyncHandler(
       throw error;
     }
 
-    const { mode, metadata, combination, canvasState } = validatedBody;
+    const { mode, metadata, combination, canvasState, previewImage, composition } = validatedBody;
 
     // FIX #6: Validate that all referenced clothing items exist
     const itemIds: string[] = [];
@@ -233,6 +233,8 @@ export const POST = asyncHandler(
       metadata,
       combination,
       canvasState,
+      previewImage,
+      composition,
     });
 
     await outfit.save();

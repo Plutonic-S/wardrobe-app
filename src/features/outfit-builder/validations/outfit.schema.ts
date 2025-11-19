@@ -106,6 +106,71 @@ export const createOutfitSchema = z.object({
       }),
     })
     .optional(),
+
+  // Preview Image (Phase 3.1 - Snapshots)
+  previewImage: z
+    .object({
+      url: z.string().min(1, 'Preview image URL is required'),
+      publicId: z.string().min(1, 'Preview image public ID is required'),
+      width: z.number().default(1000),
+      height: z.number().default(1000),
+      generatedAt: z.coerce.date().optional(),
+    })
+    .optional(),
+
+  // Composition (Phase 3.1 - Reconstruction)
+  composition: z
+    .object({
+      layout: z.enum(['vertical-stack', 'side-by-side', 'canvas-free']),
+      dressMe: z
+        .object({
+          slotPositions: z.record(
+            z.string(),
+            z.object({
+              x: z.number(),
+              y: z.number(),
+              width: z.number(),
+              height: z.number(),
+              zIndex: z.number().default(0),
+            })
+          ),
+        })
+        .optional(),
+      canvas: z
+        .object({
+          items: z.array(
+            z.object({
+              itemId: z.string(),
+              position: z.object({
+                x: z.number(),
+                y: z.number(),
+              }),
+              size: z.object({
+                width: z.number(),
+                height: z.number(),
+              }),
+              rotation: z.number().default(0),
+              zIndex: z.number().default(0),
+            })
+          ),
+          viewport: z.object({
+            zoom: z.number().default(1),
+            pan: z.object({
+              x: z.number().default(0),
+              y: z.number().default(0),
+            }),
+          }),
+        })
+        .optional(),
+      renderOptions: z
+        .object({
+          backgroundColor: z.string().default('transparent'),
+          showBorders: z.boolean().default(false),
+          padding: z.number().default(20),
+        })
+        .optional(),
+    })
+    .optional(),
 }).refine(
   (data) => {
     // If mode is 'dress-me', combination is required
@@ -202,6 +267,71 @@ export const updateOutfitSchema = z.object({
     })
     .optional(),
   
+  // Preview Image (Phase 3.1 - Snapshots)
+  previewImage: z
+    .object({
+      url: z.string().min(1, 'Preview image URL is required'),
+      publicId: z.string().min(1, 'Preview image public ID is required'),
+      width: z.number().default(1000),
+      height: z.number().default(1000),
+      generatedAt: z.coerce.date().optional(),
+    })
+    .optional(),
+
+  // Composition (Phase 3.1 - Reconstruction)
+  composition: z
+    .object({
+      layout: z.enum(['vertical-stack', 'side-by-side', 'canvas-free']),
+      dressMe: z
+        .object({
+          slotPositions: z.record(
+            z.string(),
+            z.object({
+              x: z.number(),
+              y: z.number(),
+              width: z.number(),
+              height: z.number(),
+              zIndex: z.number().default(0),
+            })
+          ),
+        })
+        .optional(),
+      canvas: z
+        .object({
+          items: z.array(
+            z.object({
+              itemId: z.string(),
+              position: z.object({
+                x: z.number(),
+                y: z.number(),
+              }),
+              size: z.object({
+                width: z.number(),
+                height: z.number(),
+              }),
+              rotation: z.number().default(0),
+              zIndex: z.number().default(0),
+            })
+          ),
+          viewport: z.object({
+            zoom: z.number().default(1),
+            pan: z.object({
+              x: z.number().default(0),
+              y: z.number().default(0),
+            }),
+          }),
+        })
+        .optional(),
+      renderOptions: z
+        .object({
+          backgroundColor: z.string().default('transparent'),
+          showBorders: z.boolean().default(false),
+          padding: z.number().default(20),
+        })
+        .optional(),
+    })
+    .optional(),
+
   // Usage tracking (optional)
   usage: z
     .object({
