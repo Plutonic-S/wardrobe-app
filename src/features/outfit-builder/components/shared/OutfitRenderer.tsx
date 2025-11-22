@@ -217,9 +217,11 @@ export const OutfitRenderer: React.FC<OutfitRendererProps> = ({
               src={items.tops.optimizedUrl || items.tops.thumbnailUrl}
               alt={items.tops.name}
               style={{
-                width: '100%',
-                height: '100%',
+                width: '90%',
+                height: '90%',
                 objectFit: 'contain',
+                margin: 'auto',
+                display: 'block',
               }}
               crossOrigin="anonymous"
             />
@@ -242,9 +244,11 @@ export const OutfitRenderer: React.FC<OutfitRendererProps> = ({
               src={items.outerwear.optimizedUrl || items.outerwear.thumbnailUrl}
               alt={items.outerwear.name}
               style={{
-                width: '100%',
-                height: '100%',
+                width: '90%',
+                height: '90%',
                 objectFit: 'contain',
+                margin: 'auto',
+                display: 'block',
               }}
               crossOrigin="anonymous"
             />
@@ -267,9 +271,11 @@ export const OutfitRenderer: React.FC<OutfitRendererProps> = ({
               src={items.bottoms.optimizedUrl || items.bottoms.thumbnailUrl}
               alt={items.bottoms.name}
               style={{
-                width: '100%',
-                height: '100%',
+                width: '90%',
+                height: '90%',
                 objectFit: 'contain',
+                margin: 'auto',
+                display: 'block',
               }}
               crossOrigin="anonymous"
             />
@@ -292,9 +298,11 @@ export const OutfitRenderer: React.FC<OutfitRendererProps> = ({
               src={items.footwear.optimizedUrl || items.footwear.thumbnailUrl}
               alt={items.footwear.name}
               style={{
-                width: '100%',
-                height: '100%',
+                width: '90%',
+                height: '90%',
                 objectFit: 'contain',
+                margin: 'auto',
+                display: 'block',
               }}
               crossOrigin="anonymous"
             />
@@ -317,9 +325,11 @@ export const OutfitRenderer: React.FC<OutfitRendererProps> = ({
               src={items.dresses.optimizedUrl || items.dresses.thumbnailUrl}
               alt={items.dresses.name}
               style={{
-                width: '100%',
-                height: '100%',
+                width: '90%',
+                height: '90%',
                 objectFit: 'contain',
+                margin: 'auto',
+                display: 'block',
               }}
               crossOrigin="anonymous"
             />
@@ -389,8 +399,8 @@ export const OutfitRenderer: React.FC<OutfitRendererProps> = ({
                 style={{
                   left: `${item.position.x}px`,
                   top: `${item.position.y}px`,
-                  width: `${item.size.width}px`,
-                  height: `${item.size.height}px`,
+                  width: `${item.size.width * 1.3}px`,
+                  height: `${item.size.height * 1.3}px`,
                   transform: `rotate(${item.rotation}deg)`,
                   zIndex: item.zIndex,
                 }}

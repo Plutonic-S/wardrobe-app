@@ -282,11 +282,21 @@ export default function ViewOutfitPage() {
                 </span>
               </div>
 
-              {/* Placeholder for outfit visualization */}
-              <div className="text-center">
-                <Sparkles className="h-24 w-24 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Outfit Preview</p>
-              </div>
+              {/* Outfit Preview */}
+              {outfit.previewImage?.url ? (
+                <Image
+                  src={outfit.previewImage.url}
+                  alt={outfit.metadata.name}
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              ) : (
+                <div className="text-center">
+                  <Sparkles className="h-24 w-24 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Outfit Preview</p>
+                </div>
+              )}
             </div>
 
             {/* Quick Stats - Mobile Only */}

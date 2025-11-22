@@ -604,7 +604,7 @@ async function captureWithHtml2Canvas(
     const canvas = await html2canvas(container, {
       width: options.width,
       height: options.height,
-      background: options.format === 'jpeg' ? '#ffffff' : undefined,
+      // No background property = transparent background for all formats
       useCORS: true,
       allowTaint: false,
       logging: false,
