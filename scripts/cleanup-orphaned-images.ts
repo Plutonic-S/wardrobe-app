@@ -19,15 +19,15 @@ async function cleanupOrphanedImages() {
     
     for (const img of images) {
       // Check if thumbnail file exists
-      const thumbnailPath = path.join(process.cwd(), 'public', img.thumbnailUrl);
-      const exists = fs.existsSync(thumbnailPath);
+      const thumbnailPath = path.join(process.cwd(), 'public', img.thumbnailUrl || '');
+      const exists = img.thumbnailUrl ? fs.existsSync(thumbnailPath) : false;
       
       console.log(`Image ${img._id}:`);
       console.log(`  Thumbnail: ${img.thumbnailUrl}`);
       console.log(`  File exists: ${exists ? '✅' : '❌'}`);
       
       if (!exists) {
-        toDelete.push(img._id.toString());
+        toDelete.push(String(img._id));
       }
       console.log('');
     }

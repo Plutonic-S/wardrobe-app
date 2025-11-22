@@ -1,15 +1,6 @@
 // src/features/calendar/types/calendar.types.ts
 
-import type { OutfitDocument } from '@/features/outfit-builder/types/outfit.types';
-
-/**
- * Preview image interface (for Phase 3.1)
- * Currently optional since Phase 3.1 is not implemented
- */
-export interface PreviewImage {
-  url: string;
-  publicId: string;
-}
+import type { OutfitDocument, PreviewImage } from '@/features/outfit-builder/types/outfit.types';
 
 /**
  * Outfit with optional preview image

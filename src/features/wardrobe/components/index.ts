@@ -10,10 +10,10 @@
 export { WardrobeGrid } from "./WardrobeGrid";
 export type { WardrobeGridProps } from "./WardrobeGrid";
 
-export { WardrobeGridSkeleton, WardrobeGridSkeletonCompact } from "./WardrobeGridSkeleton";
+export { WardrobeGridSkeleton } from "./WardrobeGridSkeleton";
 export type { WardrobeGridSkeletonProps } from "./WardrobeGridSkeleton";
 
-export { WardrobeGridEmpty, WardrobeGridEmptyCompact } from "./WardrobeGridEmpty";
+export { WardrobeGridEmpty } from "./WardrobeGridEmpty";
 export type { WardrobeGridEmptyProps } from "./WardrobeGridEmpty";
 
 export { WardrobeItemCard } from "./WardrobeItemCard";
