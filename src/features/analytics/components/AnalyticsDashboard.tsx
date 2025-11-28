@@ -75,7 +75,7 @@ export function AnalyticsDashboard() {
           loading={loading}
         />
         <CategoryUsageChart
-          data={data.utilization?.utilization.categoryUtilization || []}
+          data={data.utilization?.utilization?.categoryUtilization || []}
           loading={loading}
         />
       </div>
@@ -84,13 +84,13 @@ export function AnalyticsDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <ItemUsageTable
           title="Most Used Items"
-          data={data.utilization?.utilization.mostUsedItems || []}
+          data={data.utilization?.utilization?.mostUsedItems || []}
           loading={loading}
           emptyMessage="No usage data available. Create outfits to track item usage."
         />
         <ItemUsageTable
           title="Underutilized Items"
-          data={data.utilization?.utilization.unusedItems.slice(0, 20) || []}
+          data={data.utilization?.utilization?.unusedItems?.slice(0, 20) || []}
           loading={loading}
           emptyMessage="Great! All your items are being used."
         />
@@ -100,7 +100,7 @@ export function AnalyticsDashboard() {
       {!loading && data.overview && (
         <div className="grid gap-6 md:grid-cols-3">
           {/* Style Type Breakdown */}
-          {data.overview.styleTypeDistribution && (
+          {data.overview?.styleTypeDistribution && (
             <div className="rounded-lg border bg-card p-6">
               <h3 className="font-semibold mb-4">Style Types</h3>
               <div className="space-y-3">
@@ -109,7 +109,7 @@ export function AnalyticsDashboard() {
                     Dress Me Mode
                   </span>
                   <span className="font-medium">
-                    {data.overview.styleTypeDistribution.dressMe}
+                    {data.overview.styleTypeDistribution.dressMe || 0}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -117,7 +117,7 @@ export function AnalyticsDashboard() {
                     Canvas Mode
                   </span>
                   <span className="font-medium">
-                    {data.overview.styleTypeDistribution.canvas}
+                    {data.overview.styleTypeDistribution.canvas || 0}
                   </span>
                 </div>
                 <div className="pt-2 border-t">
@@ -129,9 +129,9 @@ export function AnalyticsDashboard() {
                       <span>2-part</span>
                       <span>
                         {
-                          data.overview.styleTypeDistribution.configBreakdown[
+                          data.overview.styleTypeDistribution.configBreakdown?.[
                             '2-part'
-                          ]
+                          ] || 0
                         }
                       </span>
                     </div>
@@ -139,9 +139,9 @@ export function AnalyticsDashboard() {
                       <span>3-part</span>
                       <span>
                         {
-                          data.overview.styleTypeDistribution.configBreakdown[
+                          data.overview.styleTypeDistribution.configBreakdown?.[
                             '3-part'
-                          ]
+                          ] || 0
                         }
                       </span>
                     </div>
@@ -149,9 +149,9 @@ export function AnalyticsDashboard() {
                       <span>4-part</span>
                       <span>
                         {
-                          data.overview.styleTypeDistribution.configBreakdown[
+                          data.overview.styleTypeDistribution.configBreakdown?.[
                             '4-part'
-                          ]
+                          ] || 0
                         }
                       </span>
                     </div>
@@ -162,7 +162,7 @@ export function AnalyticsDashboard() {
           )}
 
           {/* Cost Per Wear Summary */}
-          {data.costPerWear && (
+          {data.costPerWear?.stats && (
             <div className="rounded-lg border bg-card p-6">
               <h3 className="font-semibold mb-4">Cost Insights</h3>
               <div className="space-y-3">
@@ -171,7 +171,7 @@ export function AnalyticsDashboard() {
                     Total Wardrobe Value
                   </span>
                   <span className="font-medium">
-                    ${data.costPerWear.stats.totalWardrobeValue.toFixed(2)}
+                    ${(data.costPerWear.stats.totalWardrobeValue || 0).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -179,7 +179,7 @@ export function AnalyticsDashboard() {
                     Items with Price
                   </span>
                   <span className="font-medium">
-                    {data.costPerWear.stats.itemsCPW.length}
+                    {data.costPerWear.stats.itemsCPW?.length || 0}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -187,7 +187,7 @@ export function AnalyticsDashboard() {
                     Items without Price
                   </span>
                   <span className="font-medium">
-                    {data.costPerWear.stats.itemsWithoutPrice}
+                    {data.costPerWear.stats.itemsWithoutPrice || 0}
                   </span>
                 </div>
               </div>
@@ -195,7 +195,7 @@ export function AnalyticsDashboard() {
           )}
 
           {/* Wardrobe Overview */}
-          {data.utilization && (
+          {data.utilization?.utilization && (
             <div className="rounded-lg border bg-card p-6">
               <h3 className="font-semibold mb-4">Wardrobe Overview</h3>
               <div className="space-y-3">
@@ -204,7 +204,7 @@ export function AnalyticsDashboard() {
                     Total Categories
                   </span>
                   <span className="font-medium">
-                    {data.utilization.utilization.categoryUtilization.length}
+                    {data.utilization.utilization.categoryUtilization?.length || 0}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -212,7 +212,7 @@ export function AnalyticsDashboard() {
                     Most Used Items
                   </span>
                   <span className="font-medium">
-                    {data.utilization.utilization.mostUsedItems.length}
+                    {data.utilization.utilization.mostUsedItems?.length || 0}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -220,7 +220,7 @@ export function AnalyticsDashboard() {
                     Unused Items
                   </span>
                   <span className="font-medium">
-                    {data.utilization.utilization.unusedItems.length}
+                    {data.utilization.utilization.unusedItems?.length || 0}
                   </span>
                 </div>
               </div>

@@ -175,74 +175,23 @@ export async function getMostUsedItems(
   userId: string,
   limit: number = 20
 ): Promise<ItemUsageData[]> {
-  const Outfit = mongoose.models.Outfit;
+  const Cloth = mongoose.models.Cloth;
 
-  const result = await Outfit.aggregate([
+  // Read directly from Cloth collection using usage.wearCount
+  const result = await Cloth.aggregate([
     {
       $match: {
         userId: new mongoose.Types.ObjectId(userId),
         status: 'active',
+        'usage.wearCount': { $gt: 0 }, // Only items that have been worn
       },
     },
-    {
-      $facet: {
-        // Process dress-me mode items
-        dressMeItems: [
-          { $match: { mode: 'dress-me' } },
-          {
-            $project: {
-              items: { $objectToArray: '$combination.items' },
-            },
-          },
-          { $unwind: '$items' },
-          { $match: { 'items.v': { $exists: true, $ne: null } } },
-          {
-            $group: {
-              _id: '$items.v',
-              usageCount: { $sum: 1 },
-            },
-          },
-        ],
-        // Process canvas mode items
-        canvasItems: [
-          { $match: { mode: 'canvas' } },
-          { $unwind: '$canvasState.items' },
-          {
-            $group: {
-              _id: '$canvasState.items.clothItemId',
-              usageCount: { $sum: 1 },
-            },
-          },
-        ],
-      },
-    },
-    {
-      $project: {
-        allItems: { $concatArrays: ['$dressMeItems', '$canvasItems'] },
-      },
-    },
-    { $unwind: '$allItems' },
-    {
-      $group: {
-        _id: '$allItems._id',
-        totalUsage: { $sum: '$allItems.usageCount' },
-      },
-    },
-    { $sort: { totalUsage: -1 } },
+    { $sort: { 'usage.wearCount': -1 } }, // Sort by wear count descending
     { $limit: limit },
     {
       $lookup: {
-        from: 'clothes',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'itemDetails',
-      },
-    },
-    { $unwind: '$itemDetails' },
-    {
-      $lookup: {
         from: 'images',
-        localField: 'itemDetails.imageId',
+        localField: 'imageId',
         foreignField: '_id',
         as: 'imageData',
       },
@@ -251,10 +200,10 @@ export async function getMostUsedItems(
     {
       $project: {
         itemId: '$_id',
-        name: '$itemDetails.metadata.name',
-        category: '$itemDetails.metadata.category',
-        usageCount: '$totalUsage',
-        lastUsed: '$itemDetails.usage.lastWornDate',
+        name: '$metadata.name',
+        category: '$metadata.category',
+        usageCount: '$usage.wearCount',
+        lastUsed: '$usage.lastWornDate',
         imageUrl: '$imageData.optimizedUrl',
         thumbnailUrl: '$imageData.thumbnailUrl',
       },
@@ -265,7 +214,7 @@ export async function getMostUsedItems(
     itemId: item.itemId.toString(),
     name: item.name || 'Untitled Item',
     category: item.category || 'uncategorized',
-    usageCount: item.usageCount,
+    usageCount: item.usageCount || 0,
     lastUsed: item.lastUsed ? item.lastUsed.toISOString() : null,
     imageUrl: item.imageUrl,
     thumbnailUrl: item.thumbnailUrl,
@@ -280,39 +229,18 @@ export async function getMostUsedItems(
 export async function getUnusedItems(userId: string): Promise<ItemUsageData[]> {
   const Cloth = mongoose.models.Cloth;
 
+  // Simply get items with wearCount of 0 or undefined
   const result = await Cloth.aggregate([
     {
       $match: {
         userId: new mongoose.Types.ObjectId(userId),
         status: 'active',
-      },
-    },
-    {
-      $lookup: {
-        from: 'outfits',
-        let: { clothId: '$_id' },
-        pipeline: [
-          {
-            $match: {
-              userId: new mongoose.Types.ObjectId(userId),
-              status: 'active',
-              $or: [
-                // Check dress-me mode
-                { 'combination.items.tops': '$$clothId' },
-                { 'combination.items.bottoms': '$$clothId' },
-                { 'combination.items.footwear': '$$clothId' },
-                { 'combination.items.outerwear': '$$clothId' },
-                { 'combination.items.dresses': '$$clothId' },
-                // Check canvas mode
-                { 'canvasState.items.clothItemId': '$$clothId' },
-              ],
-            },
-          },
+        $or: [
+          { 'usage.wearCount': { $exists: false } },
+          { 'usage.wearCount': 0 },
         ],
-        as: 'outfitUsage',
       },
     },
-    { $match: { outfitUsage: { $size: 0 } } },
     {
       $lookup: {
         from: 'images',
@@ -355,6 +283,16 @@ export async function getCategoryUtilization(
   userId: string
 ): Promise<CategoryUtilization[]> {
   const Cloth = mongoose.models.Cloth;
+  const Outfit = mongoose.models.Outfit;
+
+  console.log('[getCategoryUtilization] Starting for user:', userId);
+
+  // Debug: Check outfit count
+  const outfitCount = await Outfit.countDocuments({
+    userId: new mongoose.Types.ObjectId(userId),
+    status: 'active',
+  });
+  console.log('[getCategoryUtilization] Total active outfits:', outfitCount);
 
   // Get total items per category
   const totalByCategory = await Cloth.aggregate([
@@ -372,37 +310,61 @@ export async function getCategoryUtilization(
     },
   ]);
 
-  // Get used items per category
-  const usedItems = await getMostUsedItems(userId, 1000); // Get all used items
+  console.log('[getCategoryUtilization] Total by category:', totalByCategory);
 
-  // Count used items by category
-  const usedByCategory = usedItems.reduce((acc, item) => {
-    const category = item.category;
-    if (!acc[category]) {
-      acc[category] = { uniqueItems: new Set(), totalUses: 0 };
-    }
-    acc[category].uniqueItems.add(item.itemId);
-    acc[category].totalUses += item.usageCount;
+  // Get usage data directly from Cloth items (much simpler and more accurate!)
+  const usageResult = await Cloth.aggregate([
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        status: 'active',
+        'usage.wearCount': { $gt: 0 }, // Only items that have been worn
+      },
+    },
+    {
+      $group: {
+        _id: { $ifNull: ['$metadata.category', 'uncategorized'] },
+        uniqueItems: { $addToSet: '$_id' },
+        totalUses: { $sum: '$usage.wearCount' },
+      },
+    },
+  ]);
+
+  console.log('[getCategoryUtilization] Usage result:', JSON.stringify(usageResult, null, 2));
+
+  // Create lookup map for used items by category
+  const usedByCategory = usageResult.reduce((acc, item) => {
+    const category = item._id || 'uncategorized';
+    acc[category] = {
+      uniqueItems: item.uniqueItems?.length || 0,
+      totalUses: item.totalUses || 0,
+    };
     return acc;
-  }, {} as Record<string, { uniqueItems: Set<string>; totalUses: number }>);
+  }, {} as Record<string, { uniqueItems: number; totalUses: number }>);
+
+  console.log('[getCategoryUtilization] Used by category map:', JSON.stringify(usedByCategory, null, 2));
 
   // Combine data
   const utilization: CategoryUtilization[] = totalByCategory.map((cat) => {
-    const category = cat._id;
+    const category = cat._id || 'uncategorized';
     const totalItems = cat.totalItems;
     const usedData = usedByCategory[category];
-    const usedItems = usedData ? usedData.uniqueItems.size : 0;
+    const usedItems = usedData ? usedData.uniqueItems : 0;
     const totalUses = usedData ? usedData.totalUses : 0;
 
-    return {
+    const result = {
       category,
       totalItems,
       usedItems,
       utilizationRate: totalItems > 0 ? (usedItems / totalItems) * 100 : 0,
       averageUsesPerItem: usedItems > 0 ? totalUses / usedItems : 0,
     };
+    
+    console.log(`[getCategoryUtilization] ${category}:`, result);
+    return result;
   });
 
+  console.log('[getCategoryUtilization] Final utilization:', JSON.stringify(utilization, null, 2));
   return utilization;
 }
 
@@ -458,24 +420,84 @@ export async function getCostPerWearStats(
   userId: string
 ): Promise<ItemCPWData[]> {
   const Cloth = mongoose.models.Cloth;
+  const Outfit = mongoose.models.Outfit;
 
-  // Get all items with prices
+  console.log('[getCostPerWearStats] Starting for user:', userId);
+
+  // Use aggregation to get usage counts efficiently
+  const usageResult = await Outfit.aggregate([
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        status: 'active',
+      },
+    },
+    {
+      $facet: {
+        dressMeItems: [
+          { $match: { mode: 'dress-me' } },
+          {
+            $project: {
+              items: { $objectToArray: '$combination.items' },
+            },
+          },
+          { $unwind: '$items' },
+          { $match: { 'items.v': { $exists: true, $ne: null } } },
+          {
+            $group: {
+              _id: '$items.v',
+              count: { $sum: 1 },
+            },
+          },
+        ],
+        canvasItems: [
+          { $match: { mode: 'canvas' } },
+          { $unwind: '$canvasState.items' },
+          {
+            $group: {
+              _id: '$canvasState.items.clothItemId',
+              count: { $sum: 1 },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        allItems: { $concatArrays: ['$dressMeItems', '$canvasItems'] },
+      },
+    },
+    { $unwind: '$allItems' },
+    {
+      $group: {
+        _id: '$allItems._id',
+        usageCount: { $sum: '$allItems.count' },
+      },
+    },
+  ]);
+
+  console.log('[getCostPerWearStats] Usage data fetched, items:', usageResult.length);
+
+  // Create usage map
+  const usageMap = new Map(
+    usageResult.map((item) => [item._id.toString(), item.usageCount])
+  );
+
+  // Get all items with prices and populate images
   const items = await Cloth.find({
     userId: new mongoose.Types.ObjectId(userId),
     status: 'active',
     'organization.price': { $exists: true, $gt: 0 },
   })
     .populate('imageId')
-    .lean();
+    .lean()
+    .limit(200); // Limit to prevent crashes
 
-  // Get usage data for these items
-  const usageData = await getMostUsedItems(userId, 1000);
-  const usageMap = new Map(usageData.map((item) => [item.itemId, item]));
+  console.log('[getCostPerWearStats] Items with prices:', items.length);
 
   const cpwData: ItemCPWData[] = items.map((item) => {
     const itemId = String(item._id);
-    const usage = usageMap.get(itemId);
-    const wearCount = usage?.usageCount || 0;
+    const wearCount = usageMap.get(itemId) || 0;
     const price = item.organization?.price || 0;
     const costPerWear = wearCount > 0 ? price / wearCount : Infinity;
 
@@ -500,5 +522,6 @@ export async function getCostPerWearStats(
     };
   });
 
+  console.log('[getCostPerWearStats] Completed, returning:', cpwData.length, 'items');
   return cpwData;
 }

@@ -82,6 +82,7 @@ export function ItemUsageTable({
                     alt={item.name}
                     fill
                     className="object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs">

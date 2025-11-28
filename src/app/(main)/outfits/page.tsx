@@ -175,22 +175,22 @@ export default function OutfitsGalleryPage() {
     <div className="min-h-[calc(100vh-3.75rem)] bg-background">
       <div className="max-w-7xl mx-auto p-6 md:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="h-8 w-8 text-purple-600" />
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+              <Sparkles className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
               My Outfits
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
               {outfits.length} outfit{outfits.length !== 1 ? 's' : ''} in your collection
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
             {/* Filter Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="border-border">
+                <Button variant="outline" className="border-border flex-1 sm:flex-none">
                   <Filter className="h-4 w-4 mr-2" />
                   {filterMode === 'all' ? 'All' : filterMode === 'favorites' ? 'Favorites' : filterMode === 'dress-me' ? 'Dress Me' : 'Canvas'}
                 </Button>
@@ -215,7 +215,7 @@ export default function OutfitsGalleryPage() {
             {/* Sort Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="border-border">
+                <Button variant="outline" className="border-border flex-1 sm:flex-none">
                   <Calendar className="h-4 w-4 mr-2" />
                   {sortMode === 'recent' ? 'Recent' : sortMode === 'name' ? 'Name' : 'Most Worn'}
                 </Button>
@@ -236,7 +236,7 @@ export default function OutfitsGalleryPage() {
             {/* Create Outfit Button */}
             <Button
               onClick={() => router.push('/outfits/create')}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Outfit

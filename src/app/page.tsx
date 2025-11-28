@@ -14,8 +14,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!isChecking) {
       if (user) {
-        // If user is authenticated, redirect to dashboard
-        router.push('/dashboard');
+        // If user is authenticated, redirect to wardrobe
+        router.push('/wardrobe');
       } else {
         // If user is not authenticated, redirect to login
         router.push('/login');

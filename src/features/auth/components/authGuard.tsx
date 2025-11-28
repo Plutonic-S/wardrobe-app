@@ -111,8 +111,8 @@ export function AuthGuard({
           requiredRole,
         });
 
-        // Redirect to dashboard or unauthorized page
-        router.push("/dashboard");
+        // Redirect to wardrobe or unauthorized page
+        router.push("/wardrobe");
         return;
       }
     }
@@ -242,7 +242,7 @@ export function useAuthGuard({
           requiredRole,
         });
 
-        router.push("/dashboard");
+        router.push("/wardrobe");
         return;
       }
     } else {

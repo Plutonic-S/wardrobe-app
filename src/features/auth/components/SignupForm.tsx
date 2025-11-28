@@ -65,9 +65,9 @@ export function SignupForm() {
       // Reset form
       form.reset();
 
-      // Redirect to dashboard after a short delay
+      // Redirect to wardrobe after a short delay
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/wardrobe");
       }, 1500);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";

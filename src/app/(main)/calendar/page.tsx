@@ -230,7 +230,13 @@ export default function CalendarPage() {
     return classes.join(' ');
   };
 
-  if (isChecking) return <div>Loading...</div>;
+  if (isChecking) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-3.75rem)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
   if (!user) return null;
 
   // Mobile View - Compact calendar with quick access

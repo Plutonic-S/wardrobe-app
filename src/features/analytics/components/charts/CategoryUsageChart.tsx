@@ -33,13 +33,18 @@ export function CategoryUsageChart({
   data,
   loading,
 }: CategoryUsageChartProps) {
-  // Transform data for PieChart
+  console.log('[CategoryUsageChart] Received data:', data);
+  
+  // Transform data for PieChart - use totalItems to show category distribution
   const chartData = data.map((cat) => ({
     name: cat.category.charAt(0).toUpperCase() + cat.category.slice(1),
-    value: cat.usedItems,
+    value: cat.totalItems, // Use totalItems instead of usedItems to show distribution
+    usedItems: cat.usedItems,
     total: cat.totalItems,
     utilizationRate: cat.utilizationRate,
   }));
+  
+  console.log('[CategoryUsageChart] Chart data:', chartData);
 
   if (loading) {
     return (
@@ -82,6 +87,7 @@ export function CategoryUsageChart({
       payload: {
         name: string;
         value: number;
+        usedItems: number;
         total: number;
         utilizationRate: number;
       };
@@ -95,10 +101,10 @@ export function CategoryUsageChart({
         <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium">{data.name}</p>
           <p className="text-sm text-muted-foreground">
-            Used: {data.value} / {data.total}
+            Total Items: {data.value}
           </p>
           <p className="text-sm text-muted-foreground">
-            Utilization: {data.utilizationRate.toFixed(1)}%
+            Used: {data.usedItems} ({data.utilizationRate.toFixed(1)}%)
           </p>
         </div>
       );

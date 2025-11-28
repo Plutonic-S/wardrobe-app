@@ -76,7 +76,7 @@ export function MobileSidebarTrigger({
   return (
     <div
       className={cn(
-        "fixed bottom-6 left-4 z-40",
+        "fixed bottom-20 left-4 z-40",
         "md:hidden", // Only show on mobile
         className
       )}

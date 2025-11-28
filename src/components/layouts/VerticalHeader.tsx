@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Bell,
+  Calendar,
   Home,
   PlusSquare,
   Shirt,
@@ -28,7 +28,7 @@ export function VerticalHeader() {
     { icon: Home, path: "/feed", label: "Feed" },
     { icon: Shirt, path: "/wardrobe", label: "Wardrobe" },
     { icon: PlusSquare, path: "/outfits", label: "Create Outfit" },
-    { icon: Bell, path: "/notifications", label: "Notifications" },
+    { icon: Calendar, path: "/calendar", label: "Calendar" },
     { icon: PieChart, path: "/analytics", label: "Analytics" },
   ];
 
@@ -37,7 +37,7 @@ export function VerticalHeader() {
 
   // For mobile: dropdown menu items (notifications, analytics)
   const mobileMenuItems = [
-    { icon: Bell, path: "/notifications", label: "Notifications" },
+    { icon: Calendar, path: "/calendar", label: "Calendar" },
     { icon: PieChart, path: "/analytics", label: "Analytics" },
     { icon: Settings, path: "/settings", label: "Settings" },
   ];

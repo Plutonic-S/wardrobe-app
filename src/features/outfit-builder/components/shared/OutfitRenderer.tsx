@@ -73,7 +73,7 @@ const getSlotPositions = (
   config: DressMeConfiguration
 ): Record<string, SlotPosition> => {
   const baseWidth = 1000;
-  const padding = 40;
+  const padding = 10;
 
   switch (config) {
     case '2-part':
@@ -83,7 +83,7 @@ const getSlotPositions = (
           x: padding,
           y: padding,
           width: baseWidth - 2 * padding,
-          height: 450,
+          height: 510,
           zIndex: 1,
         },
         footwear: {
@@ -107,16 +107,17 @@ const getSlotPositions = (
         },
         bottoms: {
           x: padding,
-          y: 360,
-          width: baseWidth - 2 * padding,
-          height: 300,
+          y: 330,
+          width: baseWidth - 2 * padding - 10,
+          height: 500,
           zIndex: 1,
         },
         footwear: {
-          x: padding,
-          y: 680,
-          width: baseWidth - 2 * padding,
-          height: 280,
+          x: padding + (baseWidth - 2 * padding - 20) * 0.05,
+          // Move footwear down to avoid overlap after increasing bottoms height
+          y: 800,
+          width: (baseWidth - 2 * padding) * 0.9,
+          height: 230,
           zIndex: 1,
         },
       };
@@ -128,28 +129,30 @@ const getSlotPositions = (
           x: padding,
           y: padding,
           width: 450,
-          height: 350,
+          height: 315,
           zIndex: 1,
         },
         outerwear: {
           x: 510,
           y: padding,
           width: 450,
-          height: 350,
+          height: 315,
           zIndex: 1,
         },
         bottoms: {
           x: padding,
-          y: 410,
+          y: 375,
           width: baseWidth - 2 * padding,
-          height: 300,
+          // Increased by 10% from 400 -> 440
+          height: 440,
           zIndex: 1,
         },
         footwear: {
-          x: padding,
-          y: 730,
-          width: baseWidth - 2 * padding,
-          height: 230,
+          x: padding + (baseWidth - 2 * padding) * 0.05,
+          // Move footwear down to avoid overlap after increasing bottoms height
+          y: 835,
+          width: (baseWidth - 2 * padding) * 0.9,
+          height: 165,
           zIndex: 1,
         },
       };
