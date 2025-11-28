@@ -84,7 +84,21 @@ export interface IOutfitDocument extends Document {
       padding?: number;
     };
   };
-  
+
+  // Virtual Try-On subdocument (Miragic AI)
+  virtualTryOn?: {
+    jobId: string;
+    status: 'PENDING' | 'COMPLETED' | 'FAILED';
+    mode: 'SINGLE' | 'TOP_BOTTOM';
+    resultUrl?: string;
+    humanImageUrl: string;
+    garmentType: 'upper_body' | 'lower_body' | 'full_body' | 'combo';
+    createdAt: Date;
+    processingStartedAt?: Date;
+    completedAt?: Date;
+    errorMessage?: string;
+  };
+
   // Usage tracking subdocument
   usage: {
     lastWornDate?: Date;
@@ -317,6 +331,38 @@ const compositionSchema = new Schema(
   { _id: false }
 );
 
+/**
+ * Virtual Try-On subdocument schema (Miragic AI)
+ */
+const virtualTryOnSchema = new Schema(
+  {
+    jobId: { type: String, required: true },
+    status: {
+      type: String,
+      enum: ['PENDING', 'COMPLETED', 'FAILED'],
+      required: true,
+      default: 'PENDING',
+    },
+    mode: {
+      type: String,
+      enum: ['SINGLE', 'TOP_BOTTOM'],
+      required: true,
+    },
+    resultUrl: { type: String },
+    humanImageUrl: { type: String, required: true },
+    garmentType: {
+      type: String,
+      enum: ['upper_body', 'lower_body', 'full_body', 'combo'],
+      required: true,
+    },
+    createdAt: { type: Date, default: Date.now },
+    processingStartedAt: { type: Date },
+    completedAt: { type: Date },
+    errorMessage: { type: String },
+  },
+  { _id: false }
+);
+
 // ============================================================================
 // MAIN SCHEMA
 // ============================================================================
@@ -349,6 +395,9 @@ const outfitSchema = new Schema<IOutfitDocument>(
     },
     composition: {
       type: compositionSchema,
+    },
+    virtualTryOn: {
+      type: virtualTryOnSchema,
     },
     usage: {
       type: usageSchema,

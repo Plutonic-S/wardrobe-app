@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Sparkles,
   ArrowLeft,
@@ -31,9 +32,12 @@ import {
   Calendar,
   Tag,
   Sun,
+  Loader2,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { OutfitResponse } from '@/features/outfit-builder/types/outfit.types';
+import type { VirtualTryOnData } from '@/features/outfit-builder/types/virtual-tryon.types';
 
 const CATEGORY_LABELS: Record<string, string> = {
   tops: 'Top',
@@ -67,6 +71,11 @@ export default function ViewOutfitPage() {
 
   // Delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Virtual try-on state
+  const [isGeneratingVTO, setIsGeneratingVTO] = useState(false);
+  const [vtoError, setVtoError] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch outfit
   useEffect(() => {
@@ -186,6 +195,122 @@ export default function ViewOutfitPage() {
     }
   };
 
+  // Virtual try-on handlers
+  const handleGenerateVirtualTryOn = async () => {
+    if (!outfit) return;
+
+    setIsGeneratingVTO(true);
+    setVtoError(null);
+
+    try {
+      // Start virtual try-on job
+      const response = await fetch(`/api/outfits/${outfitId}/virtual-try-on`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || 'Failed to start virtual try-on');
+      }
+
+      const result = await response.json();
+      console.log('[VTO] Job started:', result.data);
+
+      // Update outfit with virtual try-on data (clear any previous failed attempt)
+      setOutfit({
+        ...outfit,
+        virtualTryOn: {
+          jobId: result.data.jobId,
+          status: result.data.status,
+          mode: result.data.mode,
+          humanImageUrl: '/human-model.png',
+          garmentType: 'full_body',
+          createdAt: new Date(),
+          // Clear previous error/result
+          resultUrl: undefined,
+          errorMessage: undefined,
+        },
+      });
+
+      // Start polling for status
+      startPolling();
+    } catch (error) {
+      console.error('Error starting virtual try-on:', error);
+      setVtoError((error as Error).message);
+      setIsGeneratingVTO(false);
+    }
+  };
+
+  const startPolling = useCallback(() => {
+    // Clear any existing polling interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    // Poll every 3 seconds
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/outfits/${outfitId}/virtual-try-on`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          console.error('[VTO] Polling failed:', response.status, response.statusText);
+          // Don't stop polling on temporary errors, continue trying
+          return;
+        }
+
+        const result = await response.json();
+        console.log('[VTO] Status update:', result.data);
+
+        // Update outfit with latest status (use functional update to avoid stale closure)
+        setOutfit((prevOutfit) => {
+          if (!prevOutfit) return prevOutfit;
+          return {
+            ...prevOutfit,
+            virtualTryOn: result.data as VirtualTryOnData,
+          };
+        });
+
+        // Stop polling if completed or failed
+        if (result.data.status === 'COMPLETED' || result.data.status === 'FAILED') {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          setIsGeneratingVTO(false);
+
+          if (result.data.status === 'FAILED') {
+            setVtoError(result.data.errorMessage || 'Virtual try-on failed');
+          }
+        }
+      } catch (error) {
+        console.error('[VTO] Error polling virtual try-on status:', error);
+        // Don't stop polling on network errors, continue trying
+      }
+    }, 3000);
+  }, [outfitId]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-start polling if outfit has pending virtual try-on
+  useEffect(() => {
+    if (outfit?.virtualTryOn?.status === 'PENDING' && !pollingIntervalRef.current) {
+      setIsGeneratingVTO(true);
+      startPolling();
+    }
+  }, [outfit?.virtualTryOn, startPolling]);
+
   // Loading state
   if (isChecking || isLoading) {
     return (
@@ -265,39 +390,133 @@ export default function ViewOutfitPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left: Outfit Preview */}
+          {/* Left: Outfit Preview with Tabs */}
           <div>
-            <div className="bg-card border border-border rounded-lg p-8 aspect-[3/4] flex items-center justify-center relative">
-              {/* Mode Badge */}
-              <div className="absolute top-4 left-4">
-                <span
-                  className={cn(
-                    'text-xs px-3 py-1.5 rounded-full font-medium',
-                    outfit.mode === 'dress-me'
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                  )}
-                >
-                  {outfit.mode === 'dress-me' ? 'Dress Me' : 'Canvas'}
-                </span>
-              </div>
+            {/* Virtual Try-On Button */}
+            {outfit.previewImage?.url && (!outfit.virtualTryOn || outfit.virtualTryOn.status === 'FAILED') && (
+              <Button
+                onClick={handleGenerateVirtualTryOn}
+                disabled={isGeneratingVTO}
+                className="w-full mb-4"
+                variant="outline"
+              >
+                {isGeneratingVTO ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating Virtual Try-On...
+                  </>
+                ) : outfit.virtualTryOn?.status === 'FAILED' ? (
+                  <>
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Retry Virtual Try-On
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Generate Virtual Try-On
+                  </>
+                )}
+              </Button>
+            )}
 
-              {/* Outfit Preview */}
-              {outfit.previewImage?.url ? (
-                <Image
-                  src={outfit.previewImage.url}
-                  alt={outfit.metadata.name}
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              ) : (
-                <div className="text-center">
-                  <Sparkles className="h-24 w-24 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Outfit Preview</p>
+            {/* Error Message */}
+            {(vtoError || outfit.virtualTryOn?.errorMessage) && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {vtoError || outfit.virtualTryOn?.errorMessage}
+                </p>
+              </div>
+            )}
+
+            <Tabs defaultValue="preview" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="preview">Outfit Preview</TabsTrigger>
+                <TabsTrigger value="virtual-tryon" disabled={!outfit.virtualTryOn?.resultUrl}>
+                  Virtual Try-On
+                  {isGeneratingVTO && (
+                    <Loader2 className="ml-2 h-3 w-3 animate-spin" />
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="preview" className="mt-0">
+                <div className="bg-card border border-border rounded-lg p-8 aspect-[3/4] flex items-center justify-center relative">
+                  {/* Mode Badge */}
+                  <div className="absolute top-4 left-4 z-10">
+                    <span
+                      className={cn(
+                        'text-xs px-3 py-1.5 rounded-full font-medium',
+                        outfit.mode === 'dress-me'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      )}
+                    >
+                      {outfit.mode === 'dress-me' ? 'Dress Me' : 'Canvas'}
+                    </span>
+                  </div>
+
+                  {/* Outfit Preview */}
+                  {outfit.previewImage?.url ? (
+                    <Image
+                      src={outfit.previewImage.url}
+                      alt={outfit.metadata.name}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <Sparkles className="h-24 w-24 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">Outfit Preview</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </TabsContent>
+
+              <TabsContent value="virtual-tryon" className="mt-0">
+                <div className="bg-card border border-border rounded-lg p-8 aspect-[3/4] flex items-center justify-center relative">
+                  {/* Status Badge */}
+                  {outfit.virtualTryOn && (
+                    <div className="absolute top-4 left-4 z-10">
+                      <span
+                        className={cn(
+                          'text-xs px-3 py-1.5 rounded-full font-medium',
+                          outfit.virtualTryOn.status === 'COMPLETED'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                            : outfit.virtualTryOn.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                        )}
+                      >
+                        {outfit.virtualTryOn.status}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Virtual Try-On Result */}
+                  {outfit.virtualTryOn?.resultUrl ? (
+                    <Image
+                      src={outfit.virtualTryOn.resultUrl}
+                      alt={`${outfit.metadata.name} - Virtual Try-On`}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : isGeneratingVTO ? (
+                    <div className="text-center">
+                      <Loader2 className="h-24 w-24 text-muted-foreground mx-auto mb-4 animate-spin" />
+                      <p className="text-muted-foreground">Generating virtual try-on...</p>
+                      <p className="text-sm text-muted-foreground mt-2">This may take up to 2 minutes</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Wand2 className="h-24 w-24 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No virtual try-on generated yet</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
 
             {/* Quick Stats - Mobile Only */}
             <div className="grid grid-cols-2 gap-4 mt-4 md:hidden">
