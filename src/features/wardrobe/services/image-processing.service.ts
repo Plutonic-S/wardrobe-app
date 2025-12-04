@@ -394,35 +394,108 @@ except Exception as e:
   private static async extractColors(imagePath: string): Promise<ColorPalette> {
     try {
       // Get image statistics using Sharp
-      const { data } = await sharp(imagePath)
-        .resize(100, 100, { fit: "inside" }) // Smaller for faster processing
+      const { data, info } = await sharp(imagePath)
+        .resize(150, 150, { fit: "inside" }) // Slightly larger for better sampling
         .raw()
         .toBuffer({ resolveWithObject: true });
 
       // Extract RGB values
       const pixels: number[] = Array.from(data);
-      const colorCounts = new Map<string, number>();
+      const colorCounts = new Map<string, { count: number; r: number; g: number; b: number }>();
 
-      // Count color occurrences
-      for (let i = 0; i < pixels.length; i += 3) {
+      // Count color occurrences with improved filtering
+      for (let i = 0; i < pixels.length; i += info.channels) {
         const r = pixels[i];
         const g = pixels[i + 1];
         const b = pixels[i + 2];
+        const alpha = info.channels === 4 ? pixels[i + 3] : 255;
 
-        // Skip transparent/very light pixels
+        // Skip transparent pixels
+        if (alpha < 50) continue;
+
+        // Calculate brightness (perceived luminance)
+        const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+        
+        // Skip very light pixels (white/near-white background)
         if (r > 240 && g > 240 && b > 240) continue;
+        
+        // Skip very dark pixels (black/near-black artifacts)
+        // This prevents black artifacts from dominating
+        if (brightness < 30) continue;
+        
+        // Calculate saturation to skip grayscale pixels
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const saturation = max === 0 ? 0 : (max - min) / max;
+        
+        // Skip low saturation (grayish) pixels unless they're the only option
+        if (saturation < 0.15 && brightness > 200) continue;
 
-        const hex = this.rgbToHex(r, g, b);
-        colorCounts.set(hex, (colorCounts.get(hex) || 0) + 1);
+        // Quantize colors to reduce noise (group similar colors)
+        const quantize = 16; // Reduce precision to group similar colors
+        const qr = Math.round(r / quantize) * quantize;
+        const qg = Math.round(g / quantize) * quantize;
+        const qb = Math.round(b / quantize) * quantize;
+        
+        const hex = this.rgbToHex(qr, qg, qb);
+        
+        if (colorCounts.has(hex)) {
+          const existing = colorCounts.get(hex)!;
+          existing.count += 1;
+          // Update average RGB values
+          existing.r = Math.round((existing.r + r) / 2);
+          existing.g = Math.round((existing.g + g) / 2);
+          existing.b = Math.round((existing.b + b) / 2);
+        } else {
+          colorCounts.set(hex, { count: 1, r, g, b });
+        }
       }
 
-      // Get top 5 colors
+      // If we filtered out too many colors, relax the constraints
+      if (colorCounts.size === 0) {
+        logger.warn("No colors found with strict filtering, retrying with relaxed filters");
+        
+        for (let i = 0; i < pixels.length; i += info.channels) {
+          const r = pixels[i];
+          const g = pixels[i + 1];
+          const b = pixels[i + 2];
+          const alpha = info.channels === 4 ? pixels[i + 3] : 255;
+
+          if (alpha < 50) continue;
+          
+          const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+          
+          // Only skip pure white and pure black
+          if ((r > 250 && g > 250 && b > 250) || brightness < 10) continue;
+          
+          const quantize = 16;
+          const qr = Math.round(r / quantize) * quantize;
+          const qg = Math.round(g / quantize) * quantize;
+          const qb = Math.round(b / quantize) * quantize;
+          
+          const hex = this.rgbToHex(qr, qg, qb);
+          
+          if (colorCounts.has(hex)) {
+            colorCounts.get(hex)!.count += 1;
+          } else {
+            colorCounts.set(hex, { count: 1, r, g, b });
+          }
+        }
+      }
+
+      // Get top 5 colors by count
       const sortedColors = Array.from(colorCounts.entries())
-        .sort((a, b) => b[1] - a[1])
+        .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 5)
-        .map(([color]) => color);
+        .map(([, data]) => this.rgbToHex(data.r, data.g, data.b));
 
       const dominantColor = sortedColors[0] || "#cccccc";
+
+      logger.info("Color extraction complete", {
+        dominantColor,
+        totalColorsFound: colorCounts.size,
+        topColors: sortedColors,
+      });
 
       return {
         dominantColor,

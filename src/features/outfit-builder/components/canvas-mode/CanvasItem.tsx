@@ -55,6 +55,7 @@ export function CanvasItem({ item }: CanvasItemProps) {
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      setIsSelected(false); // Clear selection after dragging
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -91,7 +92,7 @@ export function CanvasItem({ item }: CanvasItemProps) {
         cursor: isDragging ? 'grabbing' : 'grab',
       }}
       className={`
-        group transition-shadow duration-200
+        group transition-shadow duration-200 select-none
         ${isSelected ? 'ring-2 ring-primary shadow-lg' : ''}
       `}
       onMouseDown={handleMouseDown}

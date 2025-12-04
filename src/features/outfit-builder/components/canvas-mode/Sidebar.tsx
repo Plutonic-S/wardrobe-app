@@ -28,6 +28,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const { wardrobeItems, setWardrobeItems } = useOutfitBuilder();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<ClothCategory[]>([]);
+  const [openAccordionItems, setOpenAccordionItems] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch wardrobe items on mount
@@ -120,11 +121,20 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   // Toggle category filter
   const handleCategoryToggle = (category: ClothCategory) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
+    setSelectedCategories((prev) => {
+      const isAdding = !prev.includes(category);
+      
+      // If adding a category, also expand it in the accordion
+      if (isAdding) {
+        setOpenAccordionItems((openItems) => 
+          openItems.includes(category) ? openItems : [...openItems, category]
+        );
+      }
+      
+      return isAdding
+        ? [...prev, category]
+        : prev.filter((c) => c !== category);
+    });
   };
 
   // Close sidebar on item drag start (mobile only)
@@ -179,7 +189,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             )}
           </div>
         ) : (
-          <Accordion type="multiple" className="w-full">
+          <Accordion 
+            type="multiple" 
+            className="w-full"
+            value={openAccordionItems}
+            onValueChange={setOpenAccordionItems}
+          >
             {ALL_CATEGORIES.map((category) => (
               <CategorySection
                 key={category}

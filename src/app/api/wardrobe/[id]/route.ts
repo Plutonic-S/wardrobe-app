@@ -6,6 +6,7 @@ import { asyncHandler } from "@/lib/middleware/error-handler";
 import { ApiResponseHandler } from "@/lib/api-response";
 import dbConnect from "@/lib/db/mongoose";
 import Cloth from "@/lib/db/models/Cloth";
+import Outfit from "@/lib/db/models/Outfit";
 import { clothUpdateSchema } from "@/features/wardrobe/validations/wardrobe.schema";
 import {
   type PopulatedClothItem,
@@ -212,7 +213,7 @@ export const PATCH = asyncHandler(
 );
 
 /* ------------------------------------------------------------------ */
-/*  DELETE – Soft delete clothing item (mark as disposed)             */
+/*  DELETE – Soft delete clothing item and related outfits            */
 /* ------------------------------------------------------------------ */
 export const DELETE = asyncHandler(
   async (
@@ -229,44 +230,68 @@ export const DELETE = asyncHandler(
       return ApiResponseHandler.badRequest("Invalid clothing item ID");
     }
 
-    /* 3. Soft delete with ownership check */
+    /* 3. Check ownership before deletion */
     await dbConnect();
 
-    const deleted = await Cloth.findOneAndUpdate(
-      {
-        _id: id,
-        userId: user.userId, // Ownership check
-        status: { $ne: "disposed" }, // Prevent duplicate deletions
-      },
-      { $set: { status: "disposed" } },
-      { new: true }
-    )
-      .select("_id status")
-      .lean();
+    const item = await Cloth.findOne({
+      _id: id,
+      userId: user.userId,
+    }).select("_id status").lean();
 
-    if (!deleted) {
-      // Check if item exists but is already deleted or doesn't belong to user
-      const item = await Cloth.findById(id).select("userId status").lean();
-      
-      if (!item) {
-        return ApiResponseHandler.notFound("Clothing item not found");
-      }
-      
-      if (item.status === "disposed") {
-        return ApiResponseHandler.badRequest("Clothing item already deleted");
-      }
-      
-      return ApiResponseHandler.forbidden("You do not own this clothing item");
+    if (!item) {
+      return ApiResponseHandler.notFound("Clothing item not found");
     }
 
-    /* 4. Return success */
+    if (item.status === "disposed") {
+      return ApiResponseHandler.badRequest("Clothing item already deleted");
+    }
+
+    /* 4. Find all outfits containing this item */
+    const clothIdObj = new Types.ObjectId(id);
+    
+    // Query for both dress-me and canvas mode outfits
+    const affectedOutfits = await Outfit.find({
+      userId: user.userId,
+      status: { $ne: "deleted" },
+      $or: [
+        { "combination.items.tops": clothIdObj },
+        { "combination.items.outerwear": clothIdObj },
+        { "combination.items.bottoms": clothIdObj },
+        { "combination.items.dresses": clothIdObj },
+        { "combination.items.footwear": clothIdObj },
+        { "combination.items.accessories": clothIdObj },
+        { "canvasState.items.clothItemId": clothIdObj },
+      ],
+    }).select("_id metadata.name").lean();
+
+    /* 5. Delete the cloth item (soft delete) */
+    await Cloth.findByIdAndUpdate(
+      id,
+      { $set: { status: "disposed" } },
+      { new: true }
+    );
+
+    /* 6. Delete all affected outfits (soft delete) */
+    if (affectedOutfits.length > 0) {
+      const outfitIds = affectedOutfits.map(o => o._id);
+      await Outfit.updateMany(
+        { _id: { $in: outfitIds } },
+        { $set: { status: "deleted" } }
+      );
+    }
+
+    /* 7. Return success with affected outfits count */
     return ApiResponseHandler.success(
       {
         id,
         deleted: true,
         status: "disposed",
+        affectedOutfits: {
+          count: affectedOutfits.length,
+          names: affectedOutfits.map(o => o.metadata?.name || "Unnamed Outfit"),
+        },
       },
-      "Clothing item deleted successfully"
+      `Clothing item deleted successfully${affectedOutfits.length > 0 ? ` along with ${affectedOutfits.length} outfit${affectedOutfits.length > 1 ? 's' : ''}` : ''}`
     );
   }
 );

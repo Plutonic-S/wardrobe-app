@@ -544,6 +544,48 @@ async function waitForImagesWithProgress(
 }
 
 /**
+ * Calculate bounding box of all items in canvas mode
+ */
+function calculateCanvasBounds(container: HTMLElement): { x: number; y: number; width: number; height: number } | null {
+  const items = container.querySelectorAll('[class*="absolute"]');
+  if (items.length === 0) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  items.forEach((item) => {
+    const element = item as HTMLElement;
+    const rect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    // Calculate position relative to container
+    const x = rect.left - containerRect.left;
+    const y = rect.top - containerRect.top;
+    const right = x + rect.width;
+    const bottom = y + rect.height;
+
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, right);
+    maxY = Math.max(maxY, bottom);
+  });
+
+  // Add generous padding - 25% on each side, minimum 100px
+  // This ensures the outfit fills the container nicely without being too tight
+  const paddingX = Math.max(140, (maxX - minX) * 0.25);
+  const paddingY = Math.max(40, (maxY - minY) * 0.1);
+
+  return {
+    x: Math.max(0, minX - paddingX),
+    y: Math.max(0, minY - paddingY),
+    width: (maxX - minX) + (paddingX * 2),
+    height: (maxY - minY) + (paddingY * 2),
+  };
+}
+
+/**
  * Capture with html2canvas using optimized settings
  */
 async function captureWithHtml2Canvas(
@@ -619,23 +661,58 @@ async function captureWithHtml2Canvas(
       containerHeight: container.offsetHeight,
     });
 
+    // Check if this is canvas mode and crop to content bounds
+    const isCanvasMode = container.querySelector('[class*="absolute"]')?.parentElement?.style.width === `${options.width}px`;
+    let finalCanvas = canvas;
+
+    if (isCanvasMode) {
+      const bounds = calculateCanvasBounds(container);
+      if (bounds) {
+        console.log('[captureWithHtml2Canvas] Canvas mode detected, cropping to bounds:', bounds);
+        
+        // Create cropped canvas
+        const croppedCanvas = document.createElement('canvas');
+        croppedCanvas.width = Math.ceil(bounds.width);
+        croppedCanvas.height = Math.ceil(bounds.height);
+        const ctx = croppedCanvas.getContext('2d');
+        
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Draw the cropped region from the original canvas
+          ctx.drawImage(
+            canvas,
+            bounds.x, bounds.y, bounds.width, bounds.height,  // Source rectangle
+            0, 0, croppedCanvas.width, croppedCanvas.height    // Destination rectangle
+          );
+          
+          finalCanvas = croppedCanvas;
+          console.log('[captureWithHtml2Canvas] Cropped canvas size:', {
+            width: croppedCanvas.width,
+            height: croppedCanvas.height
+          });
+        }
+      }
+    }
+
     // Scale up the canvas to higher resolution
     if (options.scale > 1) {
       console.log('[captureWithHtml2Canvas] Scaling canvas up to', options.scale, 'x');
       const scaledCanvas = document.createElement('canvas');
-      scaledCanvas.width = options.width * options.scale;
-      scaledCanvas.height = options.height * options.scale;
+      scaledCanvas.width = finalCanvas.width * options.scale;
+      scaledCanvas.height = finalCanvas.height * options.scale;
       const ctx = scaledCanvas.getContext('2d');
       if (ctx) {
         // Use high quality scaling
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(canvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+        ctx.drawImage(finalCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
         return scaledCanvas;
       }
     }
 
-    return canvas;
+    return finalCanvas;
   } finally {
     // Disable color interception
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

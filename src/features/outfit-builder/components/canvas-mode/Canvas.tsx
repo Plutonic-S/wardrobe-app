@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { useOutfitBuilder } from '@/features/outfit-builder/hooks/useOutfitBuilder';
 import { ClothResponse } from '@/features/wardrobe/types/wardrobe.types';
-import { Grid3x3, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Grid3x3, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CanvasItem } from './CanvasItem';
 
@@ -141,8 +141,8 @@ export function Canvas({ isSidebarOpen = true }: CanvasProps) {
         <Button variant="outline" size="icon" title="Zoom Out" onClick={handleZoomOut}>
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="icon" title="Fit to Screen" onClick={handleFitToScreen}>
-          <Maximize2 className="h-4 w-4" />
+        <Button variant="outline" size="icon" title="Reset Zoom" onClick={handleFitToScreen}>
+          <RotateCcw className="h-4 w-4" />
         </Button>
       </div>
 

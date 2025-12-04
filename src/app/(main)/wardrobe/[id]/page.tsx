@@ -154,6 +154,8 @@ export default function ClothItemPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCheckingOutfits, setIsCheckingOutfits] = useState(false);
+  const [affectedOutfits, setAffectedOutfits] = useState<{ id: string; name: string; mode: string; previewUrl: string | null }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isColorPaletteHovered, setIsColorPaletteHovered] = useState(false);
@@ -283,6 +285,29 @@ export default function ClothItemPage() {
       .finally(() => setIsFavoriting(false));
   };
 
+  const checkAffectedOutfits = async () => {
+    setIsCheckingOutfits(true);
+    try {
+      const response = await fetch(`/api/wardrobe/${itemId}/check-outfits`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAffectedOutfits(data.data.outfits || []);
+      }
+    } catch (err) {
+      console.error('Failed to check affected outfits:', err);
+      setAffectedOutfits([]);
+    } finally {
+      setIsCheckingOutfits(false);
+    }
+  };
+
+  const handleDeleteDialogOpen = async () => {
+    await checkAffectedOutfits();
+    setIsDeleteDialogOpen(true);
+  };
+
   useEffect(() => { fetchItem(); }, [itemId, fetchItem]);
 
   // Render states
@@ -363,9 +388,13 @@ export default function ClothItemPage() {
             <Edit3 className="w-4 h-4" />
             <span className="hidden sm:inline">Edit</span>
           </Button>
-          <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting} className="gap-2">
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden sm:inline">{isDeleting ? 'Deleting...' : 'Delete'}</span>
+          <Button variant="destructive" onClick={handleDeleteDialogOpen} disabled={isDeleting || isCheckingOutfits} className="gap-2">
+            {isCheckingOutfits ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">{isCheckingOutfits ? 'Checking...' : isDeleting ? 'Deleting...' : 'Delete'}</span>
           </Button>
         </div>
       </div>
