@@ -440,15 +440,15 @@ export default function ViewOutfitPage() {
               </TabsList>
 
               <TabsContent value="preview" className="mt-0">
-                <div className="bg-card border border-border rounded-lg p-8 aspect-[3/4] flex items-center justify-center relative">
+                <div className="bg-white rounded-lg p-4 aspect-[3/4] flex items-center justify-center relative">
                   {/* Mode Badge */}
                   <div className="absolute top-4 left-4 z-10">
                     <span
                       className={cn(
-                        'text-xs px-3 py-1.5 rounded-full font-medium',
+                        'text-xs px-3 py-1.5 rounded-md font-semibold uppercase tracking-wide shadow-sm backdrop-blur-sm',
                         outfit.mode === 'dress-me'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          ? 'bg-gradient-to-r from-violet-500/90 to-purple-500/90 text-white'
+                          : 'bg-gradient-to-r from-sky-500/90 to-blue-500/90 text-white'
                       )}
                     >
                       {outfit.mode === 'dress-me' ? 'Dress Me' : 'Canvas'}
@@ -474,18 +474,18 @@ export default function ViewOutfitPage() {
               </TabsContent>
 
               <TabsContent value="virtual-tryon" className="mt-0">
-                <div className="bg-card border border-border rounded-lg p-8 aspect-[3/4] flex items-center justify-center relative">
+                <div className="bg-white rounded-lg p-4 aspect-[3/4] flex items-center justify-center relative">
                   {/* Status Badge */}
                   {outfit.virtualTryOn && (
                     <div className="absolute top-4 left-4 z-10">
                       <span
                         className={cn(
-                          'text-xs px-3 py-1.5 rounded-full font-medium',
+                          'text-xs px-3 py-1.5 rounded-md font-semibold uppercase tracking-wide shadow-sm backdrop-blur-sm',
                           outfit.virtualTryOn.status === 'COMPLETED'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                            ? 'bg-gradient-to-r from-emerald-500/90 to-green-500/90 text-white'
                             : outfit.virtualTryOn.status === 'PENDING'
-                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            ? 'bg-gradient-to-r from-amber-500/90 to-yellow-500/90 text-white'
+                            : 'bg-gradient-to-r from-rose-500/90 to-red-500/90 text-white'
                         )}
                       >
                         {outfit.virtualTryOn.status}

@@ -111,7 +111,7 @@ outfitAssignmentSchema.statics.getTodayAndTomorrow = async function (
   })
     .populate({
       path: 'outfitId',
-      select: 'metadata mode combination',
+      select: 'metadata mode combination previewImage',
     })
     .sort({ assignedDate: 1 })
     .lean()

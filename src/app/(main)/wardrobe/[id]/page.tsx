@@ -407,7 +407,36 @@ export default function ClothItemPage() {
               Delete Item?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-base">
-              Are you sure you want to delete this item? This action cannot be undone and the item will be permanently removed from your wardrobe.
+              {isCheckingOutfits ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Checking for outfits that include this item...
+                </div>
+              ) : affectedOutfits.length > 0 ? (
+                <div>
+                  This item is used in <strong>{affectedOutfits.length}</strong> saved outfit{affectedOutfits.length > 1 ? 's' : ''}. Deleting the item will also delete those outfits.
+                  <div className="mt-3 max-h-48 overflow-auto">
+                    <ul className="space-y-2">
+                      {affectedOutfits.map((o) => (
+                        <li key={o.id} className="flex items-center gap-3">
+                          {o.previewUrl ? (
+                            <Image src={o.previewUrl} alt={o.name} width={40} height={40} className="w-10 h-10 rounded object-cover border" unoptimized />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-muted-foreground/10 border" />
+                          )}
+                          <div className="flex-1">
+                            <div className="text-sm font-medium">{o.name}</div>
+                            <div className="text-xs text-muted-foreground">Mode: {o.mode}</div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="mt-3 text-sm text-muted-foreground">Are you sure you want to proceed?</div>
+                </div>
+              ) : (
+                'Are you sure you want to delete this item? This action cannot be undone and the item will be permanently removed from your wardrobe.'
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -418,7 +447,7 @@ export default function ClothItemPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
             >
               <Trash2 className="w-4 h-4" />
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Deleting...' : affectedOutfits.length > 0 ? `Delete item and ${affectedOutfits.length} outfit${affectedOutfits.length > 1 ? 's' : ''}` : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

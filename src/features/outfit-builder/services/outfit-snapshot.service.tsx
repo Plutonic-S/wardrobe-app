@@ -166,9 +166,15 @@ export async function generateOutfitSnapshot(
   renderData: DressMeRenderData | CanvasRenderData,
   options: SnapshotOptions = {}
 ): Promise<SnapshotResult> {
+  // Use different default dimensions based on mode
+  // Dress-me: 900x1140 (vertical rectangle)
+  // Canvas: 1000x1000 (square, will be cropped to content)
+  const defaultWidth = mode === 'dress-me' ? 900 : 1000;
+  const defaultHeight = mode === 'dress-me' ? 1140 : 1000;
+
   const {
-    width = 1000,
-    height = 1000,
+    width = defaultWidth,
+    height = defaultHeight,
     format = 'png',
     quality = 0.9,
     scale = 2,
@@ -227,6 +233,7 @@ export async function generateOutfitSnapshot(
       height,
       scale,
       format,
+      mode, // Pass the actual mode to the capture function
     });
     
     // Move back (will be removed shortly anyway)
@@ -595,6 +602,7 @@ async function captureWithHtml2Canvas(
     height: number;
     scale: number;
     format: 'png' | 'jpeg';
+    mode: 'dress-me' | 'canvas';
   }
 ): Promise<HTMLCanvasElement> {
   // CRITICAL FIX: Inject temporary stylesheet to override ALL CSS variables and colors
@@ -659,17 +667,17 @@ async function captureWithHtml2Canvas(
       expectedHeight: options.height * options.scale,
       containerWidth: container.offsetWidth,
       containerHeight: container.offsetHeight,
+      mode: options.mode,
     });
 
-    // Check if this is canvas mode and crop to content bounds
-    const isCanvasMode = container.querySelector('[class*="absolute"]')?.parentElement?.style.width === `${options.width}px`;
+    // Only crop to content bounds in canvas mode
     let finalCanvas = canvas;
 
-    if (isCanvasMode) {
+    const shouldCrop = options.mode === 'canvas';
+
+    if (shouldCrop) {
       const bounds = calculateCanvasBounds(container);
-      if (bounds) {
-        console.log('[captureWithHtml2Canvas] Canvas mode detected, cropping to bounds:', bounds);
-        
+      if (bounds) {        
         // Create cropped canvas
         const croppedCanvas = document.createElement('canvas');
         croppedCanvas.width = Math.ceil(bounds.width);
@@ -688,10 +696,6 @@ async function captureWithHtml2Canvas(
           );
           
           finalCanvas = croppedCanvas;
-          console.log('[captureWithHtml2Canvas] Cropped canvas size:', {
-            width: croppedCanvas.width,
-            height: croppedCanvas.height
-          });
         }
       }
     }

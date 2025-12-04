@@ -10,8 +10,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Edit3, Trash2, Archive, Heart } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Edit3, Trash2, Archive, Heart, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 // Import wardrobe components
 import { WardrobeSidebar } from '@/features/wardrobe/components/WardrobeSidebar';
@@ -47,6 +58,13 @@ export default function WardrobePage() {
 
   // Edit mode state
   const [editMode, setEditMode] = useState<EditMode>(null);
+
+  // Delete confirmation state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<ClothResponse | null>(null);
+  const [isCheckingOutfits, setIsCheckingOutfits] = useState(false);
+  const [affectedOutfits, setAffectedOutfits] = useState<{ id: string; name: string; mode: string; previewUrl: string | null }[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch wardrobe items from API
   useEffect(() => {
@@ -152,22 +170,61 @@ export default function WardrobePage() {
     filters.tags?.length,
   ].filter(Boolean).length;
 
+  // Check affected outfits before delete
+  const checkAffectedOutfits = async (itemId: string) => {
+    setIsCheckingOutfits(true);
+    try {
+      const response = await fetch(`/api/wardrobe/${itemId}/check-outfits`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAffectedOutfits(data.data.outfits || []);
+      }
+    } catch (err) {
+      console.error('Failed to check affected outfits:', err);
+      setAffectedOutfits([]);
+    } finally {
+      setIsCheckingOutfits(false);
+    }
+  };
+
+  // Confirm and delete item
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/wardrobe/${itemToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete item');
+      }
+
+      // Remove from local state
+      setWardrobeItems(prevItems => prevItems.filter(i => i.id !== itemToDelete.id));
+      console.log(`✅ Deleted item: ${itemToDelete.name}`);
+      setIsDeleteDialogOpen(false);
+      setItemToDelete(null);
+      setAffectedOutfits([]);
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Handle edit mode actions
   const handleEditAction = async (item: ClothResponse, action: 'delete' | 'archive' | 'donate') => {
     try {
       if (action === 'delete') {
-        const response = await fetch(`/api/wardrobe/${item.id}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete item');
-        }
-
-        // Remove from local state
-        setWardrobeItems(prevItems => prevItems.filter(i => i.id !== item.id));
-        console.log(`✅ Deleted item: ${item.name}`);
+        // Show delete confirmation dialog
+        setItemToDelete(item);
+        await checkAffectedOutfits(item.id);
+        setIsDeleteDialogOpen(true);
       } else {
         // Archive or donate
         const status = action === 'archive' ? 'archived' : 'donated';
@@ -380,6 +437,61 @@ export default function WardrobePage() {
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleUploadSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              Delete {itemToDelete?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              {isCheckingOutfits ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Checking for outfits that include this item...
+                </div>
+              ) : affectedOutfits.length > 0 ? (
+                <div>
+                  This item is used in <strong>{affectedOutfits.length}</strong> saved outfit{affectedOutfits.length > 1 ? 's' : ''}. Deleting the item will also delete those outfits.
+                  <div className="mt-3 max-h-48 overflow-auto">
+                    <ul className="space-y-2">
+                      {affectedOutfits.map((o) => (
+                        <li key={o.id} className="flex items-center gap-3">
+                          {o.previewUrl ? (
+                            <Image src={o.previewUrl} alt={o.name} width={40} height={40} className="w-10 h-10 rounded object-cover border" unoptimized />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-muted-foreground/10 border" />
+                          )}
+                          <div className="flex-1">
+                            <div className="text-sm font-medium">{o.name}</div>
+                            <div className="text-xs text-muted-foreground">Mode: {o.mode}</div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="mt-3 text-sm text-muted-foreground">Are you sure you want to proceed?</div>
+                </div>
+              ) : (
+                'Are you sure you want to delete this item? This action cannot be undone and the item will be permanently removed from your wardrobe.'
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              {isDeleting ? 'Deleting...' : affectedOutfits.length > 0 ? `Delete item and ${affectedOutfits.length} outfit${affectedOutfits.length > 1 ? 's' : ''}` : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

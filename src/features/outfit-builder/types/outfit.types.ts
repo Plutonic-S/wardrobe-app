@@ -1,6 +1,7 @@
 // src/features/outfit-builder/types/outfit.types.ts
 
 import { ClothResponse, ClothCategory } from '@/features/wardrobe/types/wardrobe.types';
+import { VirtualTryOnData } from './virtual-tryon.types';
 
 // ============================================================================
 // OUTFIT MODES
@@ -182,6 +183,9 @@ export interface OutfitDocument {
   
   // Composition (Phase 3.1)
   composition?: CompositionData;
+  
+  // Virtual Try-On (Phase 3.2)
+  virtualTryOn?: VirtualTryOnData;
   
   // Usage
   usage: OutfitUsage;

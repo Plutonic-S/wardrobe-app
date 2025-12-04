@@ -10,8 +10,8 @@ import type {
   VirtualTryOnOptions,
   PollJobOptions,
   VirtualTryOnError,
-  VirtualTryOnException,
 } from '../types/virtual-tryon.types';
+import { VirtualTryOnException } from '../types/virtual-tryon.types';
 import type { OutfitResponse, DressMeConfiguration } from '../types/outfit.types';
 
 // ============================================================================

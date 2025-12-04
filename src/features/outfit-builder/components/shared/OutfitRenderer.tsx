@@ -68,11 +68,13 @@ interface OutfitRendererProps {
 
 /**
  * Calculate slot positions based on configuration
+ * Base dimensions: 900x1140 (vertical rectangle for dress-me mode)
  */
 const getSlotPositions = (
   config: DressMeConfiguration
 ): Record<string, SlotPosition> => {
-  const baseWidth = 1000;
+  const baseWidth = 900;
+  // baseHeight = 1140 - used for reference in layout calculations
   const padding = 10;
 
   switch (config) {
@@ -83,14 +85,14 @@ const getSlotPositions = (
           x: padding,
           y: padding,
           width: baseWidth - 2 * padding,
-          height: 510,
+          height: 700,
           zIndex: 1,
         },
         footwear: {
-          x: padding,
-          y: 510,
-          width: baseWidth - 2 * padding,
-          height: 450,
+          x: padding + (baseWidth - 2 * padding) * 0.1,
+          y: 720,
+          width: (baseWidth - 2 * padding) * 0.8,
+          height: 400,
           zIndex: 1,
         },
       };
@@ -102,21 +104,20 @@ const getSlotPositions = (
           x: padding,
           y: padding,
           width: baseWidth - 2 * padding,
-          height: 300,
+          height: 340,
           zIndex: 1,
         },
         bottoms: {
           x: padding,
-          y: 330,
-          width: baseWidth - 2 * padding - 10,
+          y: 370,
+          width: baseWidth - 2 * padding,
           height: 500,
           zIndex: 1,
         },
         footwear: {
-          x: padding + (baseWidth - 2 * padding - 20) * 0.05,
-          // Move footwear down to avoid overlap after increasing bottoms height
-          y: 800,
-          width: (baseWidth - 2 * padding) * 0.9,
+          x: padding + (baseWidth - 2 * padding) * 0.1,
+          y: 890,
+          width: (baseWidth - 2 * padding) * 0.8,
           height: 230,
           zIndex: 1,
         },
@@ -128,31 +129,29 @@ const getSlotPositions = (
         tops: {
           x: padding,
           y: padding,
-          width: 450,
-          height: 315,
+          width: 430,
+          height: 340,
           zIndex: 1,
         },
         outerwear: {
-          x: 510,
+          x: 460,
           y: padding,
-          width: 450,
-          height: 315,
+          width: 430,
+          height: 340,
           zIndex: 1,
         },
         bottoms: {
           x: padding,
-          y: 375,
+          y: 370,
           width: baseWidth - 2 * padding,
-          // Increased by 10% from 400 -> 440
-          height: 440,
+          height: 500,
           zIndex: 1,
         },
         footwear: {
-          x: padding + (baseWidth - 2 * padding) * 0.05,
-          // Move footwear down to avoid overlap after increasing bottoms height
-          y: 835,
-          width: (baseWidth - 2 * padding) * 0.9,
-          height: 165,
+          x: padding + (baseWidth - 2 * padding) * 0.1,
+          y: 890,
+          width: (baseWidth - 2 * padding) * 0.8,
+          height: 230,
           zIndex: 1,
         },
       };
@@ -402,8 +401,8 @@ export const OutfitRenderer: React.FC<OutfitRendererProps> = ({
                 style={{
                   left: `${item.position.x}px`,
                   top: `${item.position.y}px`,
-                  width: `${item.size.width * 1.3}px`,
-                  height: `${item.size.height * 1.3}px`,
+                  width: `${item.size.width}px`,
+                  height: `${item.size.height}px`,
                   transform: `rotate(${item.rotation}deg)`,
                   zIndex: item.zIndex,
                 }}
