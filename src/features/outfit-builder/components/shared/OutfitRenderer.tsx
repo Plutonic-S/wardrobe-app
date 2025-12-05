@@ -75,7 +75,7 @@ const getSlotPositions = (
 ): Record<string, SlotPosition> => {
   const baseWidth = 900;
   // baseHeight = 1140 - used for reference in layout calculations
-  const padding = 10;
+  const padding = 40;
 
   switch (config) {
     case '2-part':
@@ -111,12 +111,12 @@ const getSlotPositions = (
           x: padding,
           y: 370,
           width: baseWidth - 2 * padding,
-          height: 500,
+          height: 530,
           zIndex: 1,
         },
         footwear: {
           x: padding + (baseWidth - 2 * padding) * 0.1,
-          y: 890,
+          y: 870,
           width: (baseWidth - 2 * padding) * 0.8,
           height: 230,
           zIndex: 1,

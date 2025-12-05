@@ -440,7 +440,7 @@ export default function ViewOutfitPage() {
               </TabsList>
 
               <TabsContent value="preview" className="mt-0">
-                <div className="bg-white rounded-lg p-4 aspect-[3/4] flex items-center justify-center relative">
+                <div className="bg-muted rounded-lg p-4 aspect-[3/4] flex items-center justify-center relative">
                   {/* Mode Badge */}
                   <div className="absolute top-4 left-4 z-10">
                     <span
@@ -474,7 +474,7 @@ export default function ViewOutfitPage() {
               </TabsContent>
 
               <TabsContent value="virtual-tryon" className="mt-0">
-                <div className="bg-white rounded-lg p-4 aspect-[3/4] flex items-center justify-center relative">
+                <div className="bg-muted rounded-lg p-4 aspect-[3/4] flex items-center justify-center relative">
                   {/* Status Badge */}
                   {outfit.virtualTryOn && (
                     <div className="absolute top-4 left-4 z-10">

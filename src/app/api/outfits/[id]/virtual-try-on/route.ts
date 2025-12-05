@@ -8,6 +8,7 @@ import { AppError } from '@/lib/middleware/error-handler';
 import dbConnect from '@/lib/db/mongoose';
 import Outfit from '@/lib/db/models/Outfit';
 import virtualTryOnService from '@/features/outfit-builder/services/virtual-tryon.service';
+import { VirtualTryOnException } from '@/features/outfit-builder/types/virtual-tryon.types';
 
 /**
  * POST /api/outfits/[id]/virtual-try-on
@@ -85,7 +86,7 @@ export const POST = asyncHandler(async (req: NextRequest, context: { params: Pro
   let result;
   try {
     result = await virtualTryOnService.startVirtualTryOn(
-      outfit as Parameters<typeof virtualTryOnService.startVirtualTryOn>[0],
+      outfit as unknown as Parameters<typeof virtualTryOnService.startVirtualTryOn>[0],
       {
         humanImageUrl,
         garmentType,
@@ -95,13 +96,25 @@ export const POST = asyncHandler(async (req: NextRequest, context: { params: Pro
   } catch (serviceError) {
     console.error('[VTO API] Service error:', serviceError);
     console.error('[VTO API] Service error stack:', (serviceError as Error).stack);
+    
+    // Handle VirtualTryOnException with user-friendly messages
+    if (serviceError instanceof VirtualTryOnException) {
+      const exception = serviceError as VirtualTryOnException;
+      
+      // Map error codes to appropriate HTTP status codes
+      const statusCode = exception.code === 'RATE_LIMIT' ? 402 : 
+                         exception.code === 'MISSING_PREVIEW_IMAGE' ? 400 : 500;
+      
+      throw new AppError(exception.message, statusCode);
+    }
+    
     throw serviceError;
   }
 
   // 8. Save job info to database (replace any existing virtualTryOn data for retry)
   console.log('[VTO API] Detecting garment type...');
   const detectedGarmentType = garmentType || virtualTryOnService.detectGarmentType(
-    outfit as Parameters<typeof virtualTryOnService.detectGarmentType>[0]
+    outfit as unknown as Parameters<typeof virtualTryOnService.detectGarmentType>[0]
   );
   console.log('[VTO API] Detected garment type:', detectedGarmentType);
 

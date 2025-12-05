@@ -12,6 +12,7 @@ import type {
   VirtualTryOnError,
 } from '../types/virtual-tryon.types';
 import { VirtualTryOnException } from '../types/virtual-tryon.types';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { OutfitResponse, DressMeConfiguration } from '../types/outfit.types';
 
 // ============================================================================
@@ -111,6 +112,7 @@ async function startMiragicJob(
   clothImageUrl: string,
   humanImageUrl: string,
   garmentType: GarmentType,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   bottomClothImageUrl?: string
 ): Promise<MiragicCreateJobResponse> {
   console.log('[VTO Service] Starting Miragic job...');
@@ -153,6 +155,26 @@ async function startMiragicJob(
   if (!response.ok) {
     const errorText = await response.text();
     console.error('[VTO Service] Miragic API error:', response.status, errorText);
+    
+    // Parse error response to check for specific error codes
+    try {
+      const errorData = JSON.parse(errorText);
+      
+      // Handle insufficient credits error
+      if (response.status === 402 || errorData?.error?.code === 'INSUFFICIENT_CREDITS') {
+        throw new VirtualTryOnException(
+          'RATE_LIMIT' as VirtualTryOnError,
+          'Insufficient credits for virtual try-on. Please add more credits to your Miragic account.',
+          errorData
+        );
+      }
+    } catch (parseError) {
+      // If JSON parsing fails, continue with generic error
+      if (parseError instanceof VirtualTryOnException) {
+        throw parseError; // Re-throw our custom exception
+      }
+    }
+    
     throw new Error(`Miragic API error: ${response.status} - ${errorText}`);
   }
 
@@ -249,6 +271,15 @@ export async function startVirtualTryOn(
       lastError = error as Error;
       console.error(`[VTO Service] Attempt ${attempt} failed:`, error);
       console.error(`[VTO Service] Error details:`, (error as Error).message);
+
+      // Don't retry on specific errors that won't be fixed by retrying
+      if (error instanceof VirtualTryOnException) {
+        const errorCode = (error as VirtualTryOnException).code;
+        if (errorCode === 'RATE_LIMIT' || errorCode === 'MISSING_PREVIEW_IMAGE') {
+          console.error('[VTO Service] Non-retryable error encountered, stopping retries');
+          throw error; // Re-throw immediately, don't retry
+        }
+      }
 
       if (attempt < maxRetries) {
         const waitTime = retryDelay * attempt;
