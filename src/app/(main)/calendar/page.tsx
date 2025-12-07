@@ -7,8 +7,9 @@ import { useAuthGuard } from '@/features/auth/components/authGuard';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { startOfMonth, endOfMonth } from 'date-fns';
-import { Check } from 'lucide-react';
+import { Check, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { TodayCard } from '@/features/calendar/components/TodayCard';
 import { OutfitSelectorModal } from '@/features/calendar/components/OutfitSelectorModal';
 import type { OutfitAssignment } from '@/features/calendar/types/calendar.types';
@@ -183,6 +184,8 @@ export default function CalendarPage() {
 
     if (!assignment) return null;
 
+    const outfitId = assignment.outfitId?._id || assignment.outfitId?.id;
+
     return (
       <div className="flex flex-col items-center mt-1">
         {assignment.outfitId?.previewImage?.url ? (
@@ -198,9 +201,21 @@ export default function CalendarPage() {
         ) : (
           <div className="w-2 h-2 bg-blue-600 rounded-full" />
         )}
-        {assignment.isWorn && (
-          <Check className="w-3 h-3 text-green-500 mt-0.5" />
-        )}
+        <div className="flex items-center gap-0.5 mt-0.5">
+          {assignment.isWorn && (
+            <Check className="w-3 h-3 text-green-500" />
+          )}
+          {outfitId && (
+            <Link
+              href={`/outfits/${outfitId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground hover:text-foreground"
+              title="View outfit"
+            >
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          )}
+        </div>
       </div>
     );
   };
@@ -289,8 +304,10 @@ export default function CalendarPage() {
 
               if (!assignment) return null;
 
+              const outfitId = assignment.outfitId?._id || assignment.outfitId?.id;
+
               return (
-                <div className="flex justify-center mt-0.5">
+                <div className="flex flex-col items-center mt-0.5">
                   {assignment.outfitId?.previewImage?.url ? (
                     <div className="relative w-4 h-4 rounded-full overflow-hidden">
                       <Image
@@ -303,6 +320,16 @@ export default function CalendarPage() {
                     </div>
                   ) : (
                     <div className="w-2 h-2 bg-primary rounded-full" />
+                  )}
+                  {outfitId && (
+                    <Link
+                      href={`/outfits/${outfitId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="View outfit"
+                    >
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </Link>
                   )}
                 </div>
               );

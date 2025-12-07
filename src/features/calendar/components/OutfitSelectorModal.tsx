@@ -1,7 +1,7 @@
 // src/features/calendar/components/OutfitSelectorModal.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import Image from 'next/image';
-import type { OutfitAssignment, OutfitWithPreview } from '../types/calendar.types';
+import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
+import type { OutfitAssignment } from '../types/calendar.types';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Lightweight outfit type for selector (matches /api/outfits/list response)
+interface OutfitListItem {
+  id: string;
+  name: string;
+  previewImage: { url: string } | null;
+  mode: 'manual' | 'combination';
+  favorite: boolean;
+}
 
 interface OutfitSelectorModalProps {
   isOpen: boolean;
@@ -30,20 +42,30 @@ export function OutfitSelectorModal({
   selectedDate,
   currentAssignment,
 }: OutfitSelectorModalProps) {
-  const [outfits, setOutfits] = useState<OutfitWithPreview[]>([]);
+  const [outfits, setOutfits] = useState<OutfitListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedOutfitId, setSelectedOutfitId] = useState<string>('');
+  const hasFetched = useRef(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !hasFetched.current) {
       fetchOutfits();
+      hasFetched.current = true;
+    }
+  }, [isOpen]);
+
+  // Reset cache when modal closes so new outfits can be fetched next time
+  useEffect(() => {
+    if (!isOpen) {
+      hasFetched.current = false;
     }
   }, [isOpen]);
 
   const fetchOutfits = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/outfits', {
+      // Use lightweight endpoint for fast loading
+      const response = await fetch('/api/outfits/list', {
         credentials: 'include',
       });
 
@@ -90,8 +112,13 @@ export function OutfitSelectorModal({
         )}
 
         {isLoading ? (
-          <div className="h-48 flex items-center justify-center">
-            Loading outfits...
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="border rounded-lg p-2">
+                <Skeleton className="w-full h-32 mb-2 rounded" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
           </div>
         ) : outfits.length === 0 ? (
           <div className="h-48 flex flex-col items-center justify-center text-muted-foreground">
@@ -108,38 +135,52 @@ export function OutfitSelectorModal({
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {outfits.map((outfit, index) => {
-                // Use _id (MongoDB), id (transformed), or fallback to index
-                const outfitId = outfit._id || outfit.id || `outfit-${index}`;
+              {outfits.map((outfit) => {
+                const outfitId = outfit.id;
                 return (
-                  <button
+                  <div
                     key={outfitId}
-                    onClick={() => setSelectedOutfitId(outfitId)}
                     className={`relative border rounded-lg p-2 transition-all ${
                       selectedOutfitId === outfitId
                         ? 'border-primary ring-2 ring-primary'
                         : 'border-border hover:border-primary/50'
                     }`}
                   >
-                  {outfit.previewImage?.url ? (
-                    <div className="relative w-full h-32 mb-2 rounded overflow-hidden">
-                      <Image
-                        src={outfit.previewImage.url}
-                        alt={outfit.metadata?.name || 'Outfit'}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
+                    <button
+                      onClick={() => setSelectedOutfitId(outfitId)}
+                      className="w-full text-left"
+                    >
+                      {outfit.previewImage?.url ? (
+                        <div className="relative w-full h-32 mb-2 rounded overflow-hidden">
+                          <Image
+                            src={outfit.previewImage.url}
+                            alt={outfit.name || 'Outfit'}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-32 mb-2 bg-muted rounded flex items-center justify-center">
+                          <span className="text-muted-foreground text-xs">No preview</span>
+                        </div>
+                      )}
+                    </button>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-sm font-medium truncate flex-1">
+                        {outfit.name || 'Unnamed Outfit'}
+                      </p>
+                      <Link
+                        href={`/outfits/${outfitId}`}
+                        target="_blank"
+                        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+                        title="View outfit details"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
-                  ) : (
-                    <div className="w-full h-32 mb-2 bg-muted rounded flex items-center justify-center">
-                      <span className="text-muted-foreground text-xs">No preview</span>
-                    </div>
-                  )}
-                    <p className="text-sm font-medium truncate">
-                      {outfit.metadata?.name || 'Unnamed Outfit'}
-                    </p>
-                  </button>
+                  </div>
                 );
               })}
             </div>

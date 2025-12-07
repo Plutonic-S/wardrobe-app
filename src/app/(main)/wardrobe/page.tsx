@@ -446,7 +446,8 @@ export default function WardrobePage() {
               <AlertCircle className="w-5 h-5 text-destructive" />
               Delete {itemToDelete?.name}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-base">
+            <AlertDialogDescription asChild className="text-base">
+              <div>
               {isCheckingOutfits ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -465,8 +466,8 @@ export default function WardrobePage() {
                             <div className="w-10 h-10 rounded bg-muted-foreground/10 border" />
                           )}
                           <div className="flex-1">
-                            <div className="text-sm font-medium">{o.name}</div>
-                            <div className="text-xs text-muted-foreground">Mode: {o.mode}</div>
+                            <span className="text-sm font-medium block">{o.name}</span>
+                            <span className="text-xs text-muted-foreground block">Mode: {o.mode}</span>
                           </div>
                         </li>
                       ))}
@@ -475,8 +476,9 @@ export default function WardrobePage() {
                   <div className="mt-3 text-sm text-muted-foreground">Are you sure you want to proceed?</div>
                 </div>
               ) : (
-                'Are you sure you want to delete this item? This action cannot be undone and the item will be permanently removed from your wardrobe.'
+                <span>Are you sure you want to delete this item? This action cannot be undone and the item will be permanently removed from your wardrobe.</span>
               )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

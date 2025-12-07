@@ -1,8 +1,9 @@
 // src/features/calendar/components/TodayCard.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, X, Plus } from 'lucide-react';
+import { Check, X, Plus, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import type { OutfitAssignment } from '../types/calendar.types';
 
 interface TodayCardProps {
@@ -60,7 +61,7 @@ export function TodayCard({
               src={outfit.previewImage.url}
               alt={outfit.metadata?.name || 'Outfit'}
               fill
-              className="object-cover"
+              className="fill"
               unoptimized
             />
           </div>
@@ -73,9 +74,20 @@ export function TodayCard({
         )}
 
         <div className="space-y-2">
-          <h4 className="font-medium">
-            {outfit?.metadata?.name || 'Unnamed Outfit'}
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium">
+              {outfit?.metadata?.name || 'Unnamed Outfit'}
+            </h4>
+            {outfit && (
+              <Link
+                href={`/outfits/${outfit._id || outfit.id}`}
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+                title="View outfit details"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
           {assignment.occasion && (
             <p className="text-sm text-muted-foreground">
               {assignment.occasion}
