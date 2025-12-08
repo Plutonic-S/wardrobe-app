@@ -61,7 +61,7 @@ export function TodayCard({
               src={outfit.previewImage.url}
               alt={outfit.metadata?.name || 'Outfit'}
               fill
-              className="fill"
+              className="object-contain"
               unoptimized
             />
           </div>
