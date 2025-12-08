@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthGuard } from '@/features/auth/components/authGuard';
 import { useOutfitBuilder } from '@/features/outfit-builder/hooks/useOutfitBuilder';
@@ -13,6 +13,12 @@ import {
   CanvasPlaceholder,
   OutfitSaveDialog,
 } from '@/features/outfit-builder/components';
+import { generateOutfitSnapshot } from '@/features/outfit-builder/services/outfit-snapshot.service';
+import type {
+  DressMeRenderData,
+  CanvasRenderData,
+} from '@/features/outfit-builder/components/shared/OutfitRenderer';
+import { toast } from 'sonner';
 
 export default function EditOutfitPage() {
   const router = useRouter();
@@ -42,19 +48,26 @@ export default function EditOutfitPage() {
     canUndoDressMe,
     canRedoDressMe,
     saveDressMeToHistory,
-    isLoading: isSaving,
   } = useOutfitBuilder();
 
   // Local state
   const [isLoadingOutfit, setIsLoadingOutfit] = useState(true);
   const [isLoadingWardrobe, setIsLoadingWardrobe] = useState(true);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [isSavingLocal, setIsSavingLocal] = useState(false);
   const [outfitMetadata, setOutfitMetadata] = useState<Partial<OutfitMetadata>>({
     name: '',
     description: '',
     tags: [],
     season: [],
   });
+  const [saveProgress, setSaveProgress] = useState<{
+    stage: 'idle' | 'generating' | 'uploading' | 'saving';
+    progress: number;
+  }>({ stage: 'idle', progress: 0 });
+  
+  // Track if outfit has been loaded to prevent re-fetching
+  const hasLoadedOutfitRef = useRef(false);
 
   // Fetch wardrobe items
   useEffect(() => {
@@ -111,6 +124,9 @@ export default function EditOutfitPage() {
   // Fetch and load outfit
   useEffect(() => {
     const fetchOutfit = async () => {
+      // Prevent re-fetching if already loaded
+      if (hasLoadedOutfitRef.current) return;
+      
       try {
         setIsLoadingOutfit(true);
         const response = await fetch(`/api/outfits/${outfitId}`, {
@@ -136,6 +152,7 @@ export default function EditOutfitPage() {
             setConfiguration(outfit.combination.configuration);
 
             // Find indexes of saved items in wardrobe arrays
+            // Use itemsByCategory from the current closure (wardrobe is already loaded)
             const items = outfit.combination.items;
             
             const setIndexForCategory = (category: string, itemId?: string) => {
@@ -155,6 +172,8 @@ export default function EditOutfitPage() {
             // Save initial state to history
             saveDressMeToHistory();
           }
+          
+          hasLoadedOutfitRef.current = true;
         } else {
           console.error('Failed to fetch outfit:', response.status);
           router.push('/outfits');
@@ -168,20 +187,93 @@ export default function EditOutfitPage() {
     };
 
     // Only fetch outfit after wardrobe is loaded
-    if (user && outfitId && !isLoadingWardrobe) {
+    if (user && outfitId && !isLoadingWardrobe && Object.keys(itemsByCategory).length > 0) {
       fetchOutfit();
     }
-  }, [user, outfitId, isLoadingWardrobe, router, setMode, setConfiguration, setCategoryIndex, saveDressMeToHistory, itemsByCategory]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, outfitId, isLoadingWardrobe, router, setMode, setConfiguration, setCategoryIndex, saveDressMeToHistory]);
 
   // Handle save
   const handleSave = async () => {
     try {
+      setIsSavingLocal(true);
+      setSaveProgress({ stage: 'generating', progress: 0 });
+
+      // =========================================================================
+      // STEP 1: PREPARE RENDER DATA FOR SNAPSHOT
+      // =========================================================================
+
+      let renderData: DressMeRenderData | CanvasRenderData;
+
+      if (mode === 'dress-me') {
+        // Get current items for each category based on indexes
+        const getItem = (category: string): ClothResponse | undefined => {
+          const index = categoryIndexes[category] ?? 0;
+          const categoryItems = itemsByCategory[category];
+          return categoryItems?.[index];
+        };
+
+        renderData = {
+          configuration,
+          items: {
+            tops: getItem('tops'),
+            outerwear: getItem('outerwear'),
+            bottoms: getItem('bottoms'),
+            footwear: getItem('footwear'),
+            dresses: getItem('dresses'),
+          },
+        } as DressMeRenderData;
+      } else {
+        // Canvas mode - not implemented yet for edit
+        renderData = {
+          items: [],
+          wardrobeItems,
+          viewport: { zoom: 1, pan: { x: 0, y: 0 } },
+        } as CanvasRenderData;
+      }
+
+      // =========================================================================
+      // STEP 2: GENERATE SNAPSHOT
+      // =========================================================================
+
+      let snapshotResult;
+      try {
+        snapshotResult = await generateOutfitSnapshot(
+          outfitId,
+          mode,
+          renderData,
+          {
+            onProgress: (progress) => {
+              setSaveProgress({ stage: 'generating', progress });
+            },
+          }
+        );
+        console.log('[handleSave] Snapshot generated successfully');
+      } catch (snapshotError) {
+        console.error('[handleSave] Snapshot generation failed:', snapshotError);
+        toast.error('Failed to generate outfit preview');
+        throw snapshotError;
+      }
+
+      // =========================================================================
+      // STEP 3: PREPARE UPDATE DATA
+      // =========================================================================
+
+      setSaveProgress({ stage: 'saving', progress: 90 });
+
       const updates: {
         metadata: {
           name: string;
           description?: string;
           tags: string[];
           season: string[];
+        };
+        previewImage?: {
+          url: string;
+          publicId: string;
+          width: number;
+          height: number;
+          generatedAt: string;
         };
         combination?: {
           configuration: string;
@@ -190,6 +282,7 @@ export default function EditOutfitPage() {
             outerwear?: string;
             bottoms?: string;
             footwear?: string;
+            dresses?: string;
             accessories: string[];
           };
         };
@@ -200,27 +293,64 @@ export default function EditOutfitPage() {
           tags: outfitMetadata.tags || [],
           season: outfitMetadata.season || [],
         },
+        previewImage: {
+          url: snapshotResult.url,
+          publicId: snapshotResult.publicId,
+          width: 1000,
+          height: 1000,
+          generatedAt: new Date().toISOString(),
+        },
       };
 
       if (mode === 'dress-me') {
         // Convert category indexes to actual item IDs
-        const getItemId = (category: string, index?: number) => {
-          if (index === undefined) return undefined;
+        // Use index 0 as default if not set (matches what the UI displays)
+        const getItemId = (category: string) => {
+          const index = categoryIndexes[category] ?? 0;
           const categoryItems = itemsByCategory[category];
           return categoryItems?.[index]?.id;
         };
 
+        // Build items based on configuration
+        const items: {
+          tops?: string;
+          outerwear?: string;
+          bottoms?: string;
+          footwear?: string;
+          dresses?: string;
+          accessories: string[];
+        } = {
+          accessories: [],
+        };
+
+        // Only set items for the current configuration
+        switch (configuration) {
+          case '2-part':
+            items.dresses = getItemId('dresses');
+            items.footwear = getItemId('footwear');
+            break;
+          case '3-part':
+            items.tops = getItemId('tops');
+            items.bottoms = getItemId('bottoms');
+            items.footwear = getItemId('footwear');
+            break;
+          case '4-part':
+            items.tops = getItemId('tops');
+            items.outerwear = getItemId('outerwear');
+            items.bottoms = getItemId('bottoms');
+            items.footwear = getItemId('footwear');
+            break;
+        }
+
         updates.combination = {
           configuration,
-          items: {
-            tops: getItemId('tops', categoryIndexes.tops),
-            outerwear: getItemId('outerwear', categoryIndexes.outerwear),
-            bottoms: getItemId('bottoms', categoryIndexes.bottoms),
-            footwear: getItemId('footwear', categoryIndexes.footwear),
-            accessories: [],
-          },
+          items,
         };
       }
+
+      // =========================================================================
+      // STEP 4: SAVE TO API
+      // =========================================================================
 
       const response = await fetch(`/api/outfits/${outfitId}`, {
         method: 'PATCH',
@@ -230,12 +360,18 @@ export default function EditOutfitPage() {
       });
 
       if (response.ok) {
+        toast.success('Outfit updated successfully');
         router.push(`/outfits/${outfitId}`);
       } else {
         console.error('Failed to update outfit');
+        toast.error('Failed to update outfit');
       }
     } catch (error) {
       console.error('Error updating outfit:', error);
+      toast.error('An error occurred while saving');
+    } finally {
+      setIsSavingLocal(false);
+      setSaveProgress({ stage: 'idle', progress: 0 });
     }
   };
 
@@ -330,7 +466,7 @@ export default function EditOutfitPage() {
             <Button
               onClick={() => setIsSaveDialogOpen(true)}
               className="bg-purple-600 hover:bg-purple-700 flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
-              disabled={isSaving}
+              disabled={isSavingLocal}
             >
               <Save className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Update Outfit</span>
@@ -389,8 +525,9 @@ export default function EditOutfitPage() {
         onSave={handleSave}
         metadata={outfitMetadata}
         onMetadataChange={setOutfitMetadata}
-        isSaving={isSaving}
+        isSaving={isSavingLocal}
         saveButtonText="Update Outfit"
+        saveProgress={saveProgress}
       />
     </div>
   );

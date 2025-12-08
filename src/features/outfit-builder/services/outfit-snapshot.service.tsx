@@ -579,16 +579,17 @@ function calculateCanvasBounds(container: HTMLElement): { x: number; y: number; 
     maxY = Math.max(maxY, bottom);
   });
 
-  // Add generous padding - 25% on each side, minimum 100px
-  // This ensures the outfit fills the container nicely without being too tight
-  const paddingX = Math.max(160, (maxX - minX) * 0.25);
-  const paddingY = Math.max(40, (maxY - minY) * 0.1);
+  // Reduce padding for a closer/tighter crop - 8% padding for a "zoomed in" look
+  const contentWidth = maxX - minX;
+  const contentHeight = maxY - minY;
+  const paddingX = Math.max(20, contentWidth * 0.08);
+  const paddingY = Math.max(20, contentHeight * 0.08);
 
   return {
     x: Math.max(0, minX - paddingX),
     y: Math.max(0, minY - paddingY),
-    width: (maxX - minX) + (paddingX * 2),
-    height: (maxY - minY) + (paddingY * 2),
+    width: contentWidth + (paddingX * 2),
+    height: contentHeight + (paddingY * 2),
   };
 }
 
@@ -650,11 +651,12 @@ async function captureWithHtml2Canvas(
     }
     
     // Console warnings are suppressed globally at module level
-    // IMPORTANT: Capture the container at its actual size
+    // IMPORTANT: Use scale directly in html2canvas for better quality
     // Note: backgroundColor: null is correct per html2canvas docs but @types/html2canvas is outdated
     const html2canvasOptions = {
       width: options.width,
       height: options.height,
+      scale: options.scale, // Apply scale directly for better quality capture
       backgroundColor: null, // null = transparent background
       useCORS: true,
       allowTaint: false,
@@ -680,21 +682,30 @@ async function captureWithHtml2Canvas(
 
     if (shouldCrop) {
       const bounds = calculateCanvasBounds(container);
-      if (bounds) {        
-        // Create cropped canvas
+      if (bounds) {
+        // Since we used scale in html2canvas, the captured canvas is already scaled
+        // We need to scale the bounds coordinates accordingly
+        const scaledBounds = {
+          x: bounds.x * options.scale,
+          y: bounds.y * options.scale,
+          width: bounds.width * options.scale,
+          height: bounds.height * options.scale,
+        };
+        
+        // Create cropped canvas at scaled resolution
         const croppedCanvas = document.createElement('canvas');
-        croppedCanvas.width = Math.ceil(bounds.width);
-        croppedCanvas.height = Math.ceil(bounds.height);
+        croppedCanvas.width = Math.ceil(scaledBounds.width);
+        croppedCanvas.height = Math.ceil(scaledBounds.height);
         const ctx = croppedCanvas.getContext('2d');
         
         if (ctx) {
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           
-          // Draw the cropped region from the original canvas
+          // Draw the cropped region from the scaled canvas
           ctx.drawImage(
             canvas,
-            bounds.x, bounds.y, bounds.width, bounds.height,  // Source rectangle
+            scaledBounds.x, scaledBounds.y, scaledBounds.width, scaledBounds.height,  // Source rectangle (scaled)
             0, 0, croppedCanvas.width, croppedCanvas.height    // Destination rectangle
           );
           
@@ -703,22 +714,7 @@ async function captureWithHtml2Canvas(
       }
     }
 
-    // Scale up the canvas to higher resolution
-    if (options.scale > 1) {
-      console.log('[captureWithHtml2Canvas] Scaling canvas up to', options.scale, 'x');
-      const scaledCanvas = document.createElement('canvas');
-      scaledCanvas.width = finalCanvas.width * options.scale;
-      scaledCanvas.height = finalCanvas.height * options.scale;
-      const ctx = scaledCanvas.getContext('2d');
-      if (ctx) {
-        // Use high quality scaling
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(finalCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
-        return scaledCanvas;
-      }
-    }
-
+    // No need to scale again - html2canvas already captured at the target scale
     return finalCanvas;
   } finally {
     // Disable color interception

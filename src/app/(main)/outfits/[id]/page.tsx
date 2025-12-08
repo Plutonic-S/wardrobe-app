@@ -686,6 +686,11 @@ export default function ViewOutfitPage() {
                             <p className="font-medium text-foreground">
                               {itemName}
                             </p>
+                            {isPopulated && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {populatedItem.subcategory || populatedItem.metadata?.subcategory || 'Unknown'} • Worn {populatedItem.wearCount ?? populatedItem.usage?.wearCount ?? 0}x
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
@@ -763,9 +768,11 @@ export default function ViewOutfitPage() {
                             <p className="font-medium text-foreground">
                               {itemName}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Position: ({Math.round(canvasItem.position.x)}, {Math.round(canvasItem.position.y)})
-                            </p>
+                            {isPopulated && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {populatedItem.subcategory || populatedItem.metadata?.subcategory || 'Unknown'} • Worn {populatedItem.wearCount ?? populatedItem.usage?.wearCount ?? 0}x
+                              </p>
+                            )}
                           </div>
                         </div>
                       );

@@ -4,19 +4,11 @@ import React from 'react';
 import Image from 'next/image';
 import { ClothResponse } from '@/features/wardrobe/types/wardrobe.types';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
 interface DraggableItemProps {
   item: ClothResponse;
   onDragStart: (itemId: string) => void;
 }
-
-const SEASON_COLORS = {
-  spring: 'bg-green-100 text-green-700 border-green-300',
-  summer: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  autumn: 'bg-orange-100 text-orange-700 border-orange-300',
-  winter: 'bg-blue-100 text-blue-700 border-blue-300',
-} as const;
 
 export function DraggableItem({ item, onDragStart }: DraggableItemProps) {
   const [isDragging, setIsDragging] = React.useState(false);
@@ -71,43 +63,23 @@ export function DraggableItem({ item, onDragStart }: DraggableItemProps) {
             </div>
           </div>
         )}
-
-        {/* Season badges overlay */}
-        {item.season && item.season.length > 0 && (
-          <div className="absolute top-2 right-2 flex flex-col gap-1">
-            {item.season.slice(0, 2).map((season) => (
-              <Badge
-                key={season}
-                variant="secondary"
-                className={`text-xs px-1.5 py-0.5 ${SEASON_COLORS[season]}`}
-              >
-                {season.charAt(0).toUpperCase()}
-              </Badge>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Info */}
-      <div className="p-2 space-y-1">
+      <div className="p-2 space-y-0.5">
         <p className="text-sm font-medium truncate" title={item.name}>
           {item.name}
         </p>
-
-        {/* Full season badges */}
-        {item.season && item.season.length > 0 && (
-          <div className="flex gap-1 flex-wrap">
-            {item.season.map((season) => (
-              <Badge
-                key={season}
-                variant="outline"
-                className={`text-xs ${SEASON_COLORS[season]}`}
-              >
-                {season}
-              </Badge>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="truncate capitalize">
+            {item.subcategory || item.category}
+          </span>
+          {typeof item.wearCount === 'number' && (
+            <span className="ml-1 shrink-0">
+              {item.wearCount} wear{item.wearCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
     </Card>
   );

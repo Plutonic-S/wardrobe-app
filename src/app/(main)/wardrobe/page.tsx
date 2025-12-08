@@ -264,8 +264,8 @@ export default function WardrobePage() {
 
   // Handle successful upload
   const handleUploadSuccess = async (itemId: string, metadata?: MetadataFormData) => {
-    // Close the modal first for better UX
-    setIsUploadModalOpen(false);
+    // Note: Don't close the modal here - let the ImageUploadModal handle its own closing
+    // This allows "Add Another Item" to work properly
 
     // If metadata contains tags, add them to the sidebar filter
     if (metadata?.tags && Array.isArray(metadata.tags) && metadata.tags.length > 0) {

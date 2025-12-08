@@ -75,7 +75,7 @@ const getSlotPositions = (
 ): Record<string, SlotPosition> => {
   const baseWidth = 900;
   // baseHeight = 1140 - used for reference in layout calculations
-  const padding = 40;
+  const padding = 20;
 
   switch (config) {
     case '2-part':
@@ -96,62 +96,85 @@ const getSlotPositions = (
           zIndex: 1,
         },
       };
-
-    case '3-part':
+ case '3-part':
       // Vertical stack: tops + bottoms + footwear
+      // Tops are 85% width, bottoms are 75% width, footwear is 50% width - all centered
+      const topsWidth3 = (baseWidth - 2 * padding) * 0.85;
+      const topsX3 = padding + ((baseWidth - 2 * padding) - topsWidth3) / 2;
+      const bottomsWidth = (baseWidth - 2 * padding) * 0.75;
+      const bottomsX = padding + ((baseWidth - 2 * padding) - bottomsWidth) / 2;
+      const footwearWidth3 = (baseWidth - 2 * padding) * 0.5;
+      const footwearX3 = padding + ((baseWidth - 2 * padding) - footwearWidth3) / 2;
       return {
         tops: {
-          x: padding,
+          x: topsX3,
           y: padding,
-          width: baseWidth - 2 * padding,
-          height: 340,
+          width: topsWidth3,
+          height: 360,
           zIndex: 1,
         },
         bottoms: {
-          x: padding,
+          x: bottomsX,
           y: 370,
-          width: baseWidth - 2 * padding,
-          height: 530,
+          width: bottomsWidth,
+          height: 580,
           zIndex: 1,
         },
         footwear: {
-          x: padding + (baseWidth - 2 * padding) * 0.1,
+          x: footwearX3,
           y: 870,
-          width: (baseWidth - 2 * padding) * 0.8,
-          height: 230,
+          width: footwearWidth3,
+          height: 300,
           zIndex: 1,
         },
       };
 
+      
     case '4-part':
-      // Side-by-side: tops + outerwear, then bottoms + footwear
+      // Side-by-side: tops + outerwear on top row, bottoms + footwear on bottom row
+      // Row 1: tops + outerwear (same height, aligned)
+      // Row 2: bottoms + footwear (footwear is shorter, needs vertical centering)
+      const row1Height = 340;
+      const row2Height = 580;
+      const footwearHeight = 400;
+      
+      // Calculate total content height and vertical offset to center
+      const totalContentHeight = row1Height + 20 + row2Height; // 20px gap between rows
+      const baseHeight4 = 1140;
+      const verticalOffset = (baseHeight4 - totalContentHeight - 2 * padding) / 2 + 20; // +20px extra offset
+      
+      const row1Y = padding + verticalOffset;
+      const row2Y = row1Y + row1Height + 20; // 20px gap after row 1
+      // Center footwear vertically within row 2
+      const footwearY = row2Y + (row2Height - footwearHeight) / 2;
+      
       return {
         tops: {
           x: padding,
-          y: padding,
+          y: row1Y,
           width: 430,
-          height: 340,
+          height: row1Height,
           zIndex: 1,
         },
         outerwear: {
           x: 460,
-          y: padding,
+          y: row1Y,
           width: 430,
-          height: 340,
+          height: row1Height,
           zIndex: 1,
         },
         bottoms: {
           x: padding,
-          y: 370,
-          width: baseWidth - 2 * padding,
-          height: 500,
+          y: row2Y,
+          width: 430,
+          height: row2Height,
           zIndex: 1,
         },
         footwear: {
-          x: padding + (baseWidth - 2 * padding) * 0.1,
-          y: 890,
-          width: (baseWidth - 2 * padding) * 0.8,
-          height: 230,
+          x: 460,
+          y: footwearY,
+          width: 430,
+          height: footwearHeight,
           zIndex: 1,
         },
       };

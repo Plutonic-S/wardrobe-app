@@ -285,6 +285,14 @@ export function useProcessingStatus(
    */
   useEffect(() => {
     if (autoStart && imageId) {
+      // Reset all state for new image
+      setStatus('pending');
+      setCurrentStep(null);
+      setProgress(0);
+      setError(null);
+      setSteps([...DEFAULT_STEPS]); // Reset steps to initial state
+      attemptCountRef.current = 0;
+      
       startPolling();
     }
 

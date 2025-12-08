@@ -231,6 +231,11 @@ export function ImageUploadModal({
    * Handles adding another item
    */
   const handleAddAnother = useCallback(() => {
+    // Call onSuccess to refresh the wardrobe list with the just-added item
+    if (uploadedImageId) {
+      onSuccess?.(uploadedImageId, submittedMetadata || undefined);
+    }
+
     // Revoke preview
     revokeImagePreview(previewUrl);
 
@@ -238,9 +243,10 @@ export function ImageUploadModal({
     setSelectedFile(null);
     setPreviewUrl(null);
     setMetadataError(null);
+    setSubmittedMetadata(null);
     resetUpload();
     setCurrentStep('select');
-  }, [previewUrl, resetUpload]);
+  }, [previewUrl, resetUpload, uploadedImageId, submittedMetadata, onSuccess]);
 
   /**
    * Handles viewing the item
@@ -249,8 +255,18 @@ export function ImageUploadModal({
     if (uploadedImageId) {
       onSuccess?.(uploadedImageId, submittedMetadata || undefined);
     }
+    
+    // Reset state before closing
+    revokeImagePreview(previewUrl);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setMetadataError(null);
+    setSubmittedMetadata(null);
+    resetUpload();
+    setCurrentStep('select');
+    
     onClose();
-  }, [uploadedImageId, submittedMetadata, onSuccess, onClose]);
+  }, [uploadedImageId, submittedMetadata, onSuccess, onClose, previewUrl, resetUpload]);
 
   /**
    * Handles modal close with confirmation
@@ -264,6 +280,11 @@ export function ImageUploadModal({
       if (!confirmed) return;
     }
 
+    // If we're on success screen, trigger the onSuccess callback to refresh items
+    if (currentStep === 'success' && uploadedImageId) {
+      onSuccess?.(uploadedImageId, submittedMetadata || undefined);
+    }
+
     // Revoke preview
     revokeImagePreview(previewUrl);
 
@@ -271,11 +292,12 @@ export function ImageUploadModal({
     setSelectedFile(null);
     setPreviewUrl(null);
     setMetadataError(null);
+    setSubmittedMetadata(null);
     resetUpload();
     setCurrentStep('select');
 
     onClose();
-  }, [isUploading, currentStep, previewUrl, resetUpload, onClose]);
+  }, [isUploading, currentStep, previewUrl, resetUpload, onClose, uploadedImageId, submittedMetadata, onSuccess]);
 
   /**
    * Cleanup preview URL on unmount

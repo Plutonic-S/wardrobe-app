@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { useOutfitBuilder } from '@/features/outfit-builder/hooks/useOutfitBuilder';
 import { ClothResponse } from '@/features/wardrobe/types/wardrobe.types';
-import { Grid3x3, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Grid3x3, ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CanvasItem } from './CanvasItem';
 
@@ -13,7 +13,7 @@ interface CanvasProps {
 
 export function Canvas({ isSidebarOpen = true }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const { canvasItems, addCanvasItem, viewport, setViewport } = useOutfitBuilder();
+  const { canvasItems, addCanvasItem, viewport, setViewport, clearCanvas } = useOutfitBuilder();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -144,6 +144,17 @@ export function Canvas({ isSidebarOpen = true }: CanvasProps) {
         <Button variant="outline" size="icon" title="Reset Zoom" onClick={handleFitToScreen}>
           <RotateCcw className="h-4 w-4" />
         </Button>
+        {canvasItems.length > 0 && (
+          <Button 
+            variant="outline" 
+            size="icon" 
+            title="Clear Canvas" 
+            onClick={clearCanvas}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Canvas Drop Zone */}
