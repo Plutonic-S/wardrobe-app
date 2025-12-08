@@ -9,6 +9,11 @@ import { filterWardrobeItems } from "../utils/filter-utils";
 import { cn } from "@/lib/utils";
 
 /**
+ * Category display order for grouping
+ */
+const CATEGORY_ORDER = ['tops', 'outerwear', 'bottoms', 'footwear', 'dresses', 'accessories'];
+
+/**
  * Props for WardrobeGrid component
  */
 export interface WardrobeGridProps {
@@ -129,7 +134,22 @@ export function WardrobeGrid({
       {} as Record<string, ClothResponse[]>
     );
 
-    return grouped;
+    // Sort by predefined order and filter out empty categories
+    const sortedGrouped: Record<string, ClothResponse[]> = {};
+    CATEGORY_ORDER.forEach(category => {
+      if (grouped[category] && grouped[category].length > 0) {
+        sortedGrouped[category] = grouped[category];
+      }
+    });
+    
+    // Add any remaining categories not in the order list
+    Object.keys(grouped).forEach(category => {
+      if (!CATEGORY_ORDER.includes(category) && grouped[category].length > 0) {
+        sortedGrouped[category] = grouped[category];
+      }
+    });
+
+    return sortedGrouped;
   }, [filteredItems, showCategoryHeadings]);
 
   /**

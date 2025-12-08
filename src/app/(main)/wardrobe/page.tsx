@@ -427,6 +427,7 @@ export default function WardrobePage() {
             onItemClick={handleItemClick}
             onFavoriteToggle={handleFavoriteToggle}
             onAddItem={() => setIsUploadModalOpen(true)}
+            showCategoryHeadings={!activeCategory}
           />
         </div>
       </main>
